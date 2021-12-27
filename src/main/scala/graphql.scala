@@ -77,7 +77,7 @@ object Api extends GenericSchema[Any]:
           args => storeManager.addArticle(args.title, args.subtitle, args.price),
           args => storeManager.updateArticlePrice(args.title, args.newPrice),
           args => storeManager.removeArticle(args.title).unit,
-          args => storeManager.placeOrder(args.articles.toMap, args.customer),
+          args => storeManager.placeOrder(args.items.toSet, args.customer),
           storeManager.markAsPaid,
           storeManager.markAsDelivered,
         ),
@@ -93,7 +93,7 @@ object Api extends GenericSchema[Any]:
   case class AddArticleArgs(title: Title, subtitle: Subtitle, price: Price)
   case class UpdateArticlePriceArgs(title: Title, newPrice: Price)
   case class RemoveArticleArgs(title: Title)
-  case class PlaceOrderArgs(articles: List[(Article, Amount)], customer: Customer)
+  case class PlaceOrderArgs(items: List[Item], customer: Customer)
   case class ArticleLineItem(title: Title, subtitle: Subtitle, price: Int, amount: Int)
 
 //query wines {

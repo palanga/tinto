@@ -22,7 +22,7 @@ object model:
   )
 
   case class Order private (
-    articles: Map[Article, Amount],
+    items: Set[Item],
     customer: Customer,
     status: Status = Status.Open,
   ):
@@ -41,26 +41,27 @@ object model:
       case Status.Closed    => ZIO fail Error.OrderClosed
     }
 
+  case class Item(article: Article, amount: Amount)
+
   object Order:
-    def create(articles: Map[Article, Amount], customer: Customer): ZIO[Any, Error, Order] =
-      if articles.isEmpty || articles.values.exists(_ <= 0) then ZIO fail Error.EmptyOrNegativeAmount
-      else ZIO succeed Order(articles, customer)
+    def create(items: Set[Item], customer: Customer): ZIO[Any, Error, Order] =
+      if items.isEmpty then ZIO fail Error.EmptyItemList else ZIO succeed Order(items, customer)
 
   enum Status:
     case Open, Paid, Delivered, Closed
 
   enum Error extends Throwable:
-    case AlreadyPaid, AlreadyDelivered, OrderClosed, ContactInfoIsBlank, InvalidAddress, EmptyOrNegativeAmount,
-    EmptyTitle, LessOrEqualToZero
+    case AlreadyPaid, AlreadyDelivered, OrderClosed, ContactInfoIsBlank, InvalidAddress, EmptyItemList, EmptyTitle,
+    LessOrEqualToZero
     override def getMessage: String = this match {
-      case AlreadyPaid           => "AlreadyPaid"
-      case AlreadyDelivered      => "AlreadyDelivered"
-      case OrderClosed           => "OrderClosed"
-      case ContactInfoIsBlank    => "ContactInfoIsBlank"
-      case InvalidAddress        => "InvalidAddress"
-      case EmptyOrNegativeAmount => "EmptyOrNegativeAmount"
-      case EmptyTitle            => "EmptyTitle"
-      case LessOrEqualToZero     => "LessOrEqualToZero"
+      case AlreadyPaid        => "AlreadyPaid"
+      case AlreadyDelivered   => "AlreadyDelivered"
+      case OrderClosed        => "OrderClosed"
+      case ContactInfoIsBlank => "ContactInfoIsBlank"
+      case InvalidAddress     => "InvalidAddress"
+      case EmptyItemList      => "EmptyItemList"
+      case EmptyTitle         => "EmptyTitle"
+      case LessOrEqualToZero  => "LessOrEqualToZero"
     }
 
   opaque type Title = String
@@ -97,8 +98,8 @@ object model:
 
     def listAllArticles: ZIO[Any, Nothing, List[Article]] = store.articles.toList.commit
 
-    def placeOrder(articles: Map[Article, Amount], customer: Customer): ZIO[Any, Error, OrderId] =
-      Order.create(articles, customer).flatMap(store.addOrder(_).commit)
+    def placeOrder(items: Set[Item], customer: Customer): ZIO[Any, Error, OrderId] =
+      Order.create(items, customer).flatMap(store.addOrder(_).commit)
 
     def markAsPaid(orderId: OrderId): ZIO[Any, Error, OrderId] =
       def findOrder(orderId: OrderId)  = store.orders.get(orderId).map(_.get)                   // TODO can throw
@@ -127,7 +128,7 @@ object model:
       for {
         oldArticles <- articles.toList
         _           <- articles removeIf (_.title == title)
-      } yield Chunk(oldArticles.find(_.title == title).get) // TODO con zio 2 esto no es necesario aparte can throw
+      } yield oldArticles.find(_.title == title).fold(Chunk.empty)(Chunk(_)) // TODO con zio 2 esto no es necesario
 
     def addOrder(order: Order): ZSTM[Any, Nothing, OrderId] =
       val orderId = UUID.randomUUID()
