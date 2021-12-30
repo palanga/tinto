@@ -6,7 +6,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "tinto"
   )
-  .dependsOn(price)
+  .dependsOn(price, std_list)
 
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
@@ -17,6 +17,7 @@ libraryDependencies += "dev.zio" %% "zio-test-sbt" % "1.0.13" % "test"
 //libraryDependencies += "dev.zio" %% "zio-json" % "0.2.0-M3"
 libraryDependencies += "com.github.ghostdogpr" %% "caliban"          % "1.3.1"
 libraryDependencies += "com.github.ghostdogpr" %% "caliban-zio-http" % "1.3.1" // routes for zio-http
-libraryDependencies += "ch.qos.logback"         % "logback-classic"  % "1.2.9"
+libraryDependencies += "ch.qos.logback"         % "logback-classic"  % "1.2.10"
 
-lazy val price = ProjectRef(uri("https://github.com/palanga/aconcagua.git#scala3"), "price")
+lazy val price    = ProjectRef(uri("https://github.com/palanga/aconcagua.git#v1.0.1"), "price")
+lazy val std_list = ProjectRef(uri("https://github.com/palanga/aconcagua.git#v1.0.1"), "std_list")

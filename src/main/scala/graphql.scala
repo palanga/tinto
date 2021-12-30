@@ -1,4 +1,3 @@
-import aconcagua.price.Price
 import caliban.GraphQL.graphQL
 import caliban.schema.{ArgBuilder, GenericSchema, Schema}
 import caliban.wrappers.ApolloTracing.apolloTracing
@@ -21,7 +20,7 @@ object CalibanApp extends App:
     (for {
       articles    <- zio.stm.TSet.empty[Article].commit
       orders      <- zio.stm.TMap.empty[OrderId, Order].commit
-      store        = model.Store(articles, orders)
+      store        = model.InMemoryStore(articles, orders)
       storeManager = StoreManager(store)
       interpreter <- Api.api(storeManager).interpreter
       _ <- Server
@@ -52,18 +51,21 @@ object Api extends GenericSchema[Any]:
     markAsDelivered: OrderId => ZIO[Any, Error, OrderId],
   )
 
-  implicit val priceSchema: Schema[Any, Price] = Schema.stringSchema.contramap(_.toString)
-  implicit val priceArgBuilder: ArgBuilder[Price] =
-    ArgBuilder.string.flatMap(Price.fromString(_).left.map(e => CalibanError.ExecutionError(e.getMessage)))
+  given priceSchema: Schema[Any, ARS.Price] = Schema.stringSchema.contramap(_.toString)
+  given priceArgBuilder: ArgBuilder[ARS.Price] =
+    ArgBuilder.string
+      .flatMap(input =>
+        ARS.fromString(input).toRight(CalibanError.ExecutionError(new IllegalArgumentException(input).getMessage))
+      )
 
-  implicit val articleSchema: Schema[Any, Article] = Schema.gen
+  given articleSchema: Schema[Any, Article] = Schema.gen
 
-  implicit val amountSchema: Schema[Any, Amount] = Schema.intSchema.contramap(_.self)
-  implicit val amountArgBuilder: ArgBuilder[Amount] =
+  given amountSchema: Schema[Any, Amount] = Schema.intSchema.contramap(_.self)
+  given amountArgBuilder: ArgBuilder[Amount] =
     ArgBuilder.int.flatMap(Amount(_).left.map(e => CalibanError.ExecutionError(e.getMessage)))
 
-  implicit val titleSchema: Schema[Any, Title] = Schema.stringSchema.contramap(_.self)
-  implicit val titleArgBuilder: ArgBuilder[Title] =
+  given titleSchema: Schema[Any, Title] = Schema.stringSchema.contramap(_.self)
+  given titleArgBuilder: ArgBuilder[Title] =
     ArgBuilder.string.flatMap(Title(_).left.map(e => CalibanError.ExecutionError(e.getMessage)))
 
   def api(storeManager: StoreManager) =
@@ -90,8 +92,8 @@ object Api extends GenericSchema[Any]:
     @@ printErrors // wrapper that logs errors
 //      @@ apolloTracing               // wrapper for https://github.com/apollographql/apollo-tracing
 
-  case class AddArticleArgs(title: Title, subtitle: Subtitle, price: Price)
-  case class UpdateArticlePriceArgs(title: Title, newPrice: Price)
+  case class AddArticleArgs(title: Title, subtitle: Subtitle, price: ARS.Price)
+  case class UpdateArticlePriceArgs(title: Title, newPrice: ARS.Price)
   case class RemoveArticleArgs(title: Title)
   case class PlaceOrderArgs(items: List[Item], customer: Customer)
   case class ArticleLineItem(title: Title, subtitle: Subtitle, price: Int, amount: Int)

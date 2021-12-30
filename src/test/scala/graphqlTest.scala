@@ -11,7 +11,7 @@ object graphqlTest extends DefaultMutableRunnableSpec:
       for {
         articles    <- zio.stm.TSet.empty[Article].commit
         orders      <- zio.stm.TMap.empty[OrderId, Order].commit
-        store        = model.Store(articles, orders)
+        store        = model.InMemoryStore(articles, orders)
         storeManager = StoreManager(store)
         interpreter <- Api.api(storeManager).interpreter
       } yield {
