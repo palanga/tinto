@@ -1,8 +1,11 @@
-import model.ARS
+import model.{ARS, Decode}
 import zio.test.*
 import zio.test.Assertion.*
 
 object RangeTest extends DefaultMutableRunnableSpec:
+
+  given Decode[ARS.Price] with
+    override def decode(input: String): Option[ARS.Price] = ARS.fromString(input)
 
   private def idOption(range: Range[ARS.Price]) = Range.fromString(range.toString)
   private val MIN                               = -10000.0

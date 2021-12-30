@@ -1,4 +1,4 @@
-import model.ARS
+import model.{ARS, Decode}
 
 sealed trait Range[T <: Ordered[T]]:
   def contains(element: T): Boolean
@@ -6,7 +6,10 @@ sealed trait Range[T <: Ordered[T]]:
 
 object Range:
 
-  def fromString(input: String): Option[Range[ARS.Price]] =
+  given Decode[ARS.Price] with
+    override def decode(input: String): Option[ARS.Price] = ARS.fromString(input)
+
+  def fromString[T <: Ordered[T]: Decode](input: String): Option[Range[T]] =
     import aconcagua.std.list.syntax.traverse
     input
       .strip()
@@ -16,27 +19,27 @@ object Range:
       .traverse
       .flatMap(_.reduceOption(_ && _))
 
-  private def fromStringSingle(input: String): Option[Range[ARS.Price]] = input.strip() match {
+  private def fromStringSingle[T <: Ordered[T]: Decode](input: String): Option[Range[T]] = input.strip() match {
     case OpeningRange(range) => Some(range)
     case ClosingRange(range) => Some(range)
     case _                   => None
   }
 
   private object OpeningRange:
-    def unapply(input: String): Option[Range[ARS.Price]] =
+    def unapply[T <: Ordered[T]: Decode](input: String): Option[Range[T]] =
       val (first, second) = input.splitAt(1)
       (first.strip(), second.strip()) match {
         case (_, "...")   => Some(All())
-        case ("[", price) => ARS.fromString(price).map(GreaterOrEqualsThan.apply)
+        case ("[", value) => summon[Decode[T]].decode(value).map(GreaterOrEqualsThan.apply)
         case _            => None
       }
 
   private object ClosingRange:
-    def unapply(input: String): Option[Range[ARS.Price]] =
+    def unapply[T <: Ordered[T]: Decode](input: String): Option[Range[T]] =
       val (first, second) = input.splitAt(input.length - 1)
       (first.strip(), second.strip()) match {
         case ("...", _)   => Some(All())
-        case (price, ")") => ARS.fromString(price).map(LessThan.apply)
+        case (value, ")") => summon[Decode[T]].decode(value).map(LessThan.apply)
         case _            => None
       }
 
