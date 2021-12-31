@@ -21,11 +21,8 @@ object CalibanApp extends App:
 
   override def run(args: List[String]): ZIO[ZEnv, Nothing, ExitCode] =
     (for {
-      articles    <- InMemoryDatabase.init[Article]
-      orders      <- InMemoryDatabase.init[Order]
-      store        = Store(articles, orders)
-      storeManager = StoreManager(store)
-      interpreter <- Api.api(storeManager).interpreter
+      storeManager <- ZIO.environment[Has[StoreManager]]
+      interpreter  <- Api.api(storeManager.get).interpreter
       _ <- Server
              .start(
                8088,
@@ -34,7 +31,11 @@ object CalibanApp extends App:
                },
              )
              .forever
-    } yield ()).exitCode
+    } yield ())
+      .provideCustomLayer(
+        (InMemoryDatabase.init[Article].toLayer ++ InMemoryDatabase.init[Order].toLayer) >>> StoreManager.build.toLayer
+      )
+      .exitCode
 
 object Api extends GenericSchema[Any]:
 

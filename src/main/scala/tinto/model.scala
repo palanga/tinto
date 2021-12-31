@@ -1,7 +1,7 @@
 package tinto
 
 import aconcagua.price.mono.{Currency, Prices}
-import zio.ZIO
+import zio.*
 import zio.random.{Random, nextUUID}
 
 import java.util.UUID
@@ -71,6 +71,13 @@ class StoreManager(store: Store):
     store.orders.updateEither(orderId, order => order.deliver)
 
   def listAllOrders: ZIO[Any, Error, List[(UUID, Order)]] = store.orders.all.runCollect.map(_.toList)
+
+object StoreManager:
+  val build: ZIO[Has[Database[Order]] with Has[Database[Article]], Nothing, StoreManager] =
+    for {
+      articles <- ZIO.environment[Has[Database[Article]]]
+      orders   <- ZIO.environment[Has[Database[Order]]]
+    } yield StoreManager(new Store(articles.get, orders.get))
 
 class Store(val articles: Database[Article], val orders: Database[Order])
 
