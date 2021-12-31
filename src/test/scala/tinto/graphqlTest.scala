@@ -1,5 +1,7 @@
-import model.*
+package tinto
+
 import zio.test.*
+import zio.test.Assertion.*
 
 // TODO todo
 object graphqlTest extends DefaultMutableRunnableSpec:
@@ -9,9 +11,9 @@ object graphqlTest extends DefaultMutableRunnableSpec:
     testM("value classes") {
 
       for {
-        articles    <- zio.stm.TSet.empty[Article].commit
-        orders      <- zio.stm.TMap.empty[OrderId, Order].commit
-        store        = model.InMemoryStore(articles, orders)
+        articles    <- InMemoryDatabase.init[Article]
+        orders      <- InMemoryDatabase.init[Order]
+        store        = Store(articles, orders)
         storeManager = StoreManager(store)
         interpreter <- Api.api(storeManager).interpreter
       } yield {
@@ -30,7 +32,7 @@ object graphqlTest extends DefaultMutableRunnableSpec:
 //      case class Queries(events: List[Event], painters: List[WrappedPainter])
 //      val event       = Event(OrganizationId(7), "Frida Kahlo exhibition")
 //      val painter     = Painter("Claude Monet", "Impressionism")
-//      val api         = Api.api()
+//      val api         = tinto.Api.api()
 //      val interpreter = api.interpreter
 //      val query =
 //        """query {
