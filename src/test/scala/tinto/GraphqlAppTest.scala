@@ -4,28 +4,28 @@ import zio.test.*
 import zio.test.Assertion.*
 
 // TODO todo
-object graphqlTest extends DefaultMutableRunnableSpec:
+object GraphqlAppTest extends DefaultMutableRunnableSpec:
 
   suite("graphql") {
 
     testM("value classes") {
 
-      for {
-        articles    <- InMemoryDatabase.init[Article]
-        orders      <- InMemoryDatabase.init[Order]
-        store        = Store(articles, orders)
-        storeManager = StoreManager(store)
-        interpreter <- Api.api(storeManager).interpreter
-      } yield {
-
-        val query =
-          """
-            |
-            |""".stripMargin
-
-//        interpreter.execute()
-
-      }
+//      for {
+//        articles    <- InMemoryDatabase.init[Article]
+//        orders      <- InMemoryDatabase.init[Order]
+//        store        = Store(articles, orders)
+//        storeManager = StoreManager(store)
+//        interpreter <- Api.api(storeManager).interpreter
+//      } yield {
+//
+//        val query =
+//          """
+//            |
+//            |""".stripMargin
+//
+////        interpreter.execute()
+//
+//      }
 
       ???
 

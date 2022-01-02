@@ -11,27 +11,36 @@ object InMemoryDatabase:
 
 class InMemoryDatabase[T](val elements: TMap[UUID, T]) extends Database[T]:
 
-  override def create(id: UUID, element: T): ZIO[Any, Error, UUID] =
-    elements.put(id, element).commit.as(id)
+  override def insert(id: UUID, element: T): ZIO[Any, Error, Ident[T]] =
+    elements.put(id, element).commit.as(Ident(id, element))
 
-  override def update(id: UUID, f: T => T): ZIO[Any, Error, UUID] =
-    elements.get(id).someOrFail(Error.NotFound(id)).flatMap(elements.merge(id, _)((a, _) => f(a))).commit.as(id)
+  override def update(id: UUID, f: T => T): ZIO[Any, Error, Ident[T]] =
+    elements
+      .get(id)
+      .someOrFail(Error.NotFound(id))
+      .flatMap(elements.merge(id, _)((a, _) => f(a)))
+      .commit
+      .map(Ident(id, _))
 
-  override def updateEither(id: UUID, f: T => Either[Error, T]): ZIO[Any, Error, UUID] =
+  override def updateEither(id: UUID, f: T => Either[Error, T]): ZIO[Any, Error, Ident[T]] =
     (for {
       previous: T <- elements.get(id).someOrFail(Error.NotFound(id))
       current: T  <- STM.fromEither(f(previous))
       _           <- elements.merge(id, current)((_, _) => current)
-    } yield id).commit
+    } yield Ident(id, current)).commit
 
-  override def delete(id: UUID): ZIO[Any, Error, Unit] =
-    elements.delete(id).commit.unit
+  override def delete(id: UUID): ZIO[Any, Error, Ident[T]] =
+    elements
+      .get(id)
+      .someOrFail(Error.NotFound(id))
+      .flatMap(element => elements.delete(id).as(Ident(id, element)))
+      .commit
 
-  override def find(id: UUID): ZIO[Any, Error, T] =
-    elements.get(id).commit.someOrFail(Error.NotFound(id))
+  override def find(id: UUID): ZIO[Any, Error, Ident[T]] =
+    elements.get(id).commit.someOrFail(Error.NotFound(id)).map(Ident(id, _))
 
-  override def all: ZStream[Any, Error, (UUID, T)] =
-    ZStream.fromIterableM(elements.toChunk.commit)
+  override def all: ZStream[Any, Error, Ident[T]] =
+    ZStream.fromIterableM(elements.toChunk.commit).map(Ident.fromPair)
 
-  override def filter(filter: Filter[T]): ZStream[Any, Error, (UUID, T)] =
-    all.filter((_, element) => filter.contains(element))
+  override def filter(filter: Filter[T]): ZStream[Any, Error, Ident[T]] =
+    all.filter { case Ident(_, element) => filter.contains(element) }
