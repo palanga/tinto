@@ -1,4 +1,4 @@
-package tinto
+package core
 
 sealed trait Range[T <: Ordered[T]]:
   def contains(element: T): Boolean

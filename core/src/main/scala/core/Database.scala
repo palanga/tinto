@@ -1,4 +1,4 @@
-package tinto
+package core
 
 import zio.ZIO
 import zio.stream.ZStream

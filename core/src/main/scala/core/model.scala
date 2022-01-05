@@ -1,4 +1,4 @@
-package tinto
+package core
 
 import aconcagua.price.mono.{Currency, Prices}
 import zio.*
@@ -150,9 +150,7 @@ case class Stock(inStock: Nat0, compromised: Nat0):
   def uncompromise(amount: Nat): Stock = this.copy(compromised = Nat0(compromised - amount).getOrElse(Nat0.ZERO))
 
   def release(amount: Nat): Stock =
-    val newStock       = Nat0.apply(inStock - amount).getOrElse(Nat0.ZERO)
-    val newCompromised = Nat0.apply(compromised - amount).getOrElse(Nat0.ZERO)
-    Stock(newStock, newCompromised)
+    Stock(Nat0(inStock - amount).getOrElse(Nat0.ZERO), Nat0(compromised - amount).getOrElse(Nat0.ZERO))
 
   def balance: Int = inStock - compromised
 
