@@ -27,11 +27,11 @@ object CalibanApp extends App:
       _ <- Server
              .start(
                8088,
-               Http.route { case _ -> Root / "api" / "api" =>
+               Http.route { case _ -> Root / "api" / "graphql" =>
                  CORS(ZHttpAdapter.makeHttpService(interpreter))
                },
              )
-//             .forever
+             .forever
     } yield ())
       .provideCustomLayer(testLayer)
       .provideCustomLayer(zio.test.environment.TestRandom.deterministic)
@@ -39,54 +39,25 @@ object CalibanApp extends App:
 
 object Api extends GenericSchema[Any]:
 
-  case class Queries(
-    articles: ZIO[Any, Error, List[Ident[Article]]],
-    orders: ZIO[Any, Error, List[Ident[Order]]],
-    stock: UUID => ZIO[Any, Error, Ident[Stock]],
-  )
+  def api(storeManager: StoreManager): GraphQL[Console with Clock with Random] =
+    (catalogApi(storeManager) |+| ordersApi(storeManager) |+| stockApi(storeManager))
+    @@ maxFields (200)
+    @@ maxDepth (30)
+    @@ timeout (3 seconds)
+    @@ printSlowQueries (500 millis)
+    @@ printErrors
 
-  case class Mutations(
-    addArticle: AddArticleForm => ZIO[Random, Error, Ident[Article]],
-    updatePrice: UpdateArticlePriceForm => ZIO[Any, Error, Ident[Article]],
-    removeArticle: UUID => ZIO[Any, Error, Ident[Article]],
-    placeOrder: PlaceOrderForm => ZIO[Random, Error, Ident[Order]],
-    markAsPaid: UUID => ZIO[Any, Error, Ident[Order]],
-    markAsDelivered: UUID => ZIO[Any, Error, Ident[Order]],
-    markAsCancelled: UUID => ZIO[Any, Error, Ident[Order]],
-    overwriteStock: OverwriteStockForm => ZIO[Any, Error, Ident[Stock]],
-    incrementStock: IncrementStockForm => ZIO[Any, Error, Ident[Stock]],
-  )
+  private def catalogApi(storeManager: StoreManager) = graphQL(catalog.resolver(storeManager))
+  private def ordersApi(storeManager: StoreManager)  = graphQL(orders.resolver(storeManager))
+  private def stockApi(storeManager: StoreManager)   = graphQL(stock.resolver(storeManager))
 
-  def api(storeManager: StoreManager) =
-    graphQL(
-      RootResolver(
-        Queries(
-          storeManager.listAllArticles,
-          storeManager.listAllOrders,
-          storeManager.stock,
-        ),
-        Mutations(
-          storeManager.addArticle,
-          storeManager.updateArticlePrice,
-          storeManager.removeArticle,
-          storeManager.placeOrder,
-          storeManager.markAsPaid,
-          storeManager.markAsDelivered,
-          storeManager.markAsCancelled,
-          storeManager.overwriteStock,
-          storeManager.incrementStock,
-        ),
-      )
-    )
-    @@ maxFields (200)               // query analyzer that limit query fields
-    @@ maxDepth (30)                 // query analyzer that limit query depth
-    @@ timeout (3 seconds)           // wrapper that fails slow queries
-    @@ printSlowQueries (500 millis) // wrapper that logs slow queries
-    @@ printErrors                   // wrapper that logs errors
-//      @@ apolloTracing               // wrapper for https://github.com/apollographql/apollo-tracing
+  given Schema[Any, catalog.CatalogQueries]      = Schema.gen
+  given Schema[Random, catalog.CatalogMutations] = Schema.gen
+  given Schema[Any, orders.OrdersQueries]        = Schema.gen
+  given Schema[Random, orders.OrdersMutations]   = Schema.gen
+  given Schema[Any, stock.StockQueries]          = Schema.gen
+  given Schema[Any, stock.StockMutations]        = Schema.gen
 
-  given Schema[Any, Queries]                                   = Schema.gen
-  given Schema[Random, Mutations]                              = Schema.gen
   given Schema[Any, ARS.Price]                                 = Schema.stringSchema.contramap(_.toString)
   given Schema[Any, Article]                                   = Schema.gen
   given Schema[Any, Order]                                     = Schema.gen
@@ -95,6 +66,8 @@ object Api extends GenericSchema[Any]:
   given Schema[Any, Nat]                                       = Schema.intSchema.contramap(_.self)
   given Schema[Any, Nat0]                                      = Schema.intSchema.contramap(_.self)
   given Schema[Any, NonEmptyString]                            = Schema.stringSchema.contramap(_.self)
+  given IdentOfArticle: Schema[Any, Ident[Article]]            = Schema.gen
+  given IdentOfOrder: Schema[Any, Ident[Order]]                = Schema.gen
   given [T](using Schema[Any, T]): Schema[Any, NonEmptySet[T]] = Schema.setSchema[Any, T].contramap(_.self)
 
   given ArgBuilder[ARS.Price] =
