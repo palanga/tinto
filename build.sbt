@@ -6,7 +6,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "tinto"
   )
-  .aggregate(core, api)
+  .aggregate(core, api, frontend)
 
 lazy val core = (project in file("core"))
   .settings(
@@ -37,3 +37,18 @@ lazy val api = (project in file("api"))
 
 lazy val price    = ProjectRef(uri("https://github.com/palanga/aconcagua.git#v1.0.1"), "price")
 lazy val std_list = ProjectRef(uri("https://github.com/palanga/aconcagua.git#v1.0.1"), "std_list")
+
+lazy val frontend = (project in file("frontend"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(
+    name := "frontend",
+    libraryDependencies ++= Seq(
+      "dev.zio"   %%% "zio"      % "1.0.13",
+      "dev.zio"    %% "zio-test" % "1.0.13" % Test,
+      "com.raquo" %%% "laminar"  % "0.14.2",
+    ),
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) },
+    scalaJSLinkerConfig ~= { _.withSourceMap(false) },
+    scalaJSUseMainModuleInitializer := true,
+  )
+  .dependsOn(core)
