@@ -9,6 +9,7 @@ import org.scalajs.dom.html
 
 sealed trait Element(attributes: List[Attribute]):
   def onClick(f: => Any): Element = this.addAttribute(Attribute.OnClick(() => f))
+  def when(condition: Signal[Boolean]): Element.Edge
   def build: LaminarElem
   protected def addAttribute(attribute: Attribute): Element
 
@@ -25,6 +26,8 @@ object Element:
     private val attributes: List[Attribute] = Nil,
     private val kind: "div" | "input" = "div",
   ) extends Element(attributes):
+
+    def when(condition: Signal[Boolean]): Edge = Edge(this, conditionalShow = Some(condition))
 
     def bindAll(signal: Signal[Seq[Element]]): Node = this.addAttribute(Attribute.BindSignals(signal))
 
@@ -50,9 +53,16 @@ object Element:
     private val child: Element,
     private val children: Seq[Element] = Nil,
     private val attributes: List[Attribute] = Nil,
+    private val conditionalShow: Option[Signal[Boolean]] = None,
   ) extends Element(attributes):
 
-    override def build: LaminarElem = L.div(child.build, children.map(_.build), attributes.map(_.toLaminarModFor(this)))
+    def when(condition: Signal[Boolean]): Edge = this.copy(conditionalShow = Some(condition))
+
+    override def build: LaminarElem =
+      val childNode = L.div(child.build, children.toList.map(_.build), attributes.map(_.toLaminarModFor(this)))
+      conditionalShow.fold(childNode)(shouldDisplay =>
+        L.div(L.child.maybe <-- shouldDisplay.map(if _ then Some(childNode) else None))
+      )
 
     override def addAttribute(attribute: Attribute): Element = this.copy(attributes = attribute :: attributes)
 
@@ -82,8 +92,14 @@ object Attribute:
   case class Placeholder(text: String) extends Attribute:
     def toLaminarModFor(elem: Element): LaminarMod = elem match {
       case Element.Node(_, _, "input") => L.placeholder := text
-      case _                           => L.child.text <-- Var(text).signal // TODO should not happen
+      case _                           => L.emptyMod // TODO should not happen
     }
+
+//  case class When(condition: Signal[Boolean]) extends Attribute:
+//    override def toLaminarModFor(elem: Element): LaminarMod = L.child.maybe <-- condition
+
+private val none: Val[None.type] = Val(None)
+private val always: Val[Boolean] = Val(true)
 
 private type LaminarElem = ReactiveHtmlElement[_ <: dom.html.Element]
 private type LaminarMod  = Modifier[LaminarElem]
