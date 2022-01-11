@@ -13,7 +13,7 @@ object example:
 
   private val state = State()
 
-  def root =
+  def root: Element =
     Element.of(
       Navigation,
       Perris.when(state.selectedTab.map(_ == Tab.Perris)),

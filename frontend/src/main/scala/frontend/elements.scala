@@ -19,7 +19,7 @@ object Element:
   def of(text: String): Node                       = Node(text)
   def ofMany(signal: Signal[List[Element]]): Node  = empty.bindAll(signal) // TODO return edge ?
   def of(signal: Signal[Any]): Node                = empty.bind(signal)
-  def of(child: Element, children: Element*): Edge = Edge(child, children)
+  def of(child: Element, children: Element*): Edge = Edge(children.prepended(child))
 
   case class Node(
     private val text: String,
@@ -27,7 +27,7 @@ object Element:
     private val kind: "div" | "input" = "div",
   ) extends Element(attributes):
 
-    def when(condition: Signal[Boolean]): Edge = Edge(this, conditionalShow = Some(condition))
+    def when(condition: Signal[Boolean]): Edge = Edge(Seq(this), conditionalShow = Some(condition))
 
     def bindAll(signal: Signal[Seq[Element]]): Node = this.addAttribute(Attribute.BindSignals(signal))
 
@@ -50,8 +50,7 @@ object Element:
     override def addAttribute(attribute: Attribute): Node = this.copy(attributes = attribute :: attributes)
 
   case class Edge(
-    private val child: Element,
-    private val children: Seq[Element] = Nil,
+    private val children: Seq[Element],
     private val attributes: List[Attribute] = Nil,
     private val conditionalShow: Option[Signal[Boolean]] = None,
   ) extends Element(attributes):
@@ -59,9 +58,9 @@ object Element:
     def when(condition: Signal[Boolean]): Edge = this.copy(conditionalShow = Some(condition))
 
     override def build: LaminarElem =
-      val childNode = L.div(child.build, children.toList.map(_.build), attributes.map(_.toLaminarModFor(this)))
+      val childNode = L.div(children.map(_.build), attributes.map(_.toLaminarModFor(this)))
       conditionalShow.fold(childNode)(shouldDisplay =>
-        L.div(L.child.maybe <-- shouldDisplay.map(if _ then Some(childNode) else None))
+        L.div(L.child.maybe <-- shouldDisplay.map(Option.when(_)(childNode)))
       )
 
     override def addAttribute(attribute: Attribute): Element = this.copy(attributes = attribute :: attributes)
@@ -94,9 +93,6 @@ object Attribute:
       case Element.Node(_, _, "input") => L.placeholder := text
       case _                           => L.emptyMod // TODO should not happen
     }
-
-//  case class When(condition: Signal[Boolean]) extends Attribute:
-//    override def toLaminarModFor(elem: Element): LaminarMod = L.child.maybe <-- condition
 
 private val none: Val[None.type] = Val(None)
 private val always: Val[Boolean] = Val(true)
