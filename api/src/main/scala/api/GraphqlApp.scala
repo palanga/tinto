@@ -13,11 +13,40 @@ import zio.clock.Clock
 import zio.console.Console
 import zio.duration.*
 import zio.random.Random
+import zio.stream.ZStream
+import io.netty.handler.codec.http.{HttpHeaderNames, HttpHeaderValues}
+import zio.blocking.Blocking
 
+import java.io.IOException
+import java.nio.file.Paths
 import java.util.UUID
 import scala.language.postfixOps
 
 object CalibanApp extends App:
+
+  private val graphiql: Http[Any, Nothing, Any, Response.HttpResponse[Blocking, IOException]] =
+    Http.succeed(
+      Response.http(
+        content = HttpData.fromStream(ZStream.fromResource("graphiql.html"))
+//        headers = List(Header(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.TEXT_HTML))
+      )
+    )
+
+  private val index: Http[Any, Nothing, Any, Response.HttpResponse[Blocking, Throwable]] =
+    Http.succeed(
+      Response.http(
+        content = HttpData.fromStream(ZStream.fromFile(Paths.get("/Users/palan/code/tinto/frontend/index.html")))
+      )
+    )
+
+  private val mainjs: Http[Any, Nothing, Any, Response.HttpResponse[Blocking, Throwable]] =
+    Http.succeed(
+      Response.http(
+        content = HttpData.fromStream(
+          ZStream.fromFile(Paths.get("/Users/palan/code/tinto/frontend/target/scala-3.1.0/frontend-fastopt/main.js"))
+        )
+      )
+    )
 
   override def run(args: List[String]): ZIO[ZEnv, Nothing, ExitCode] =
     (for {
@@ -27,8 +56,11 @@ object CalibanApp extends App:
       _ <- Server
              .start(
                8088,
-               Http.route { case _ -> Root / "api" / "graphql" =>
-                 CORS(ZHttpAdapter.makeHttpService(interpreter))
+               Http.route {
+                 case _ -> Root / "api" / "graphql" => CORS(ZHttpAdapter.makeHttpService(interpreter))
+                 case _ -> Root / "main.js"         => mainjs
+                 case _                             => index
+//                 case _ -> Root / "graphiql"        => graphiql
                },
              )
              .forever
