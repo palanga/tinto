@@ -15,6 +15,7 @@ object example:
 
   def root: Element =
     Element.of(
+//      Element.of("fetch").onClick(fetchArticles),
       Navigation,
       Perris.when(state.selectedTab.map(_ == Tab.Perris)),
       Counter.when(state.selectedTab.map(_ == Tab.Clicks)),

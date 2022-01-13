@@ -29,8 +29,9 @@ object Nat:
   val ONE: Nat                          = 1
   def apply(n: Int): Either[Error, Nat] = if n <= 0 then Left(Error.LessOrEqualToZero) else Right(n)
   extension (a: Nat)
-    def self: Int             = a
-    def +(b: Nat | Nat0): Nat = a + b
+    def self: Int                   = a
+    def +(b: Nat | Nat0): Nat       = a + b
+    def -(b: Int | Nat | Nat0): Int = a - b
 
 opaque type Nat0 = Int
 object Nat0:

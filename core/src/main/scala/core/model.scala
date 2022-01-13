@@ -48,7 +48,7 @@ case class Order private (
 
 case class Item(article: Ident[Article], amount: Nat)
 
-object Order:
+object Order: // TODO NonEmpty L I S T
   def apply(items: NonEmptySet[Item], customer: Customer): Order = new Order(items, customer)
 
 enum Status:
