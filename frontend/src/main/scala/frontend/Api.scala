@@ -32,7 +32,7 @@ case class Id(id: String)
 
 case class Articles(articles: List[Ident[Article]])
 
-val allArticles = api.queries.allArticles.replaceAll("\n", "")
+val allArticles = ??? //api.queries.allArticles.replaceAll("\n", "")
 
 object codecs:
 
