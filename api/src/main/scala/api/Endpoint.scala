@@ -6,7 +6,7 @@ import zio.json.JsonDecoder
 
 case class Endpoint[In, Out](
   route: String,
-  resolver: In => ZIO[Any, Throwable, Out] = Endpoint.noop,
+  resolver: In => ZIO[Any, Throwable, Out],
   method: Method = Method.GET,
   decoder: JsonDecoder[In],
 ):
@@ -23,25 +23,19 @@ case class Endpoint[In, Out](
     import zhttp.*
     import zhttp.http.*
 
-    val dea: Http[Any, Throwable, In, Out] = Http.collectM[In] { case a => resolver(a) }
-
-    val dea2: Http[Any, Throwable, Request, Out] = dea.contramap[Request] {
-      case req @ zhttp.http.Method.GET -> Root / route =>
-        val dea3: In = req.getBodyAsString
-          .toRight("No body")
-          .flatMap(decoder.decodeJson)
-          .fold(e => throw new IllegalArgumentException(e), identity)
-
-        dea3
-
+    HttpApp.collectM { case req @ zhttp.http.Method.GET -> Root / `route` =>
+      ZIO
+        .fromEither(
+          req.getBodyAsString
+            .toRight("No body")
+            .flatMap(decoder.decodeJson)
+            .left
+            .map(e => new IllegalArgumentException(e))
+        )
+        .flatMap(resolver)
+        .map(_.toString)
+        .map(Response.text)
     }
-
-    val dea3: Http[Any, Throwable, Request, UResponse] = dea2.map(_.toString).map(Response.jsonString)
-
-    dea3
-//    HttpApp.collectM { case zhttp.http.Method.GET -> Root / route =>
-//      resolver(???).map(_.toString).map(Response.jsonString)
-//    }
 
 case class UnResolvedEndpoint(
   route: String,
@@ -62,52 +56,46 @@ enum Method:
 
 object example:
 
-  val bookDecoder: JsonDecoder[Book]   = zio.json.DeriveJsonDecoder.gen
-  val viewsDecoder: JsonDecoder[Views] = zio.json.DeriveJsonDecoder.gen
-
-  val countDigits: Endpoint[Views, Int] =
+  val countDigits: Endpoint[Int, Int] =
     Endpoint
       .get("countDigits")
-      .resolveWith(countDigitsZ, viewsDecoder)
+      .resolveWith(countDigitsZ, zio.json.JsonDecoder.int)
 //      .contramap[Int](_.toString)
 //      .map(_.size)
 
-  val echo: Endpoint[Book, String] =
+  val echo: Endpoint[String, String] =
     Endpoint
       .get("echo")
-      .resolveWith(echoZ, bookDecoder)
+      .resolveWith(echoZ, zio.json.JsonDecoder.string)
 
   case class Book(name: String)
   case class Views(amount: Int)
 
-  def echoZ(input: Book)         = ZIO succeed input.name
-  def countDigitsZ(input: Views) = ZIO succeed input.amount
+  def echoZ(input: String)     = ZIO succeed input
+  def countDigitsZ(input: Int) = ZIO succeed input.toString.length
 
 object zhttpapi extends zio.App:
 
-//  import zhttp.*
-//  import zhttp.http.*
   import zhttp.http.HttpApp
   import zhttp.service.Server
-//  import zio.json.*
 
-//  val app: HttpApp[Any, Throwable] = HttpApp.collectM {
-////    case zhttp.http.Method.GET -> Root / example.countDigits.route =>
-////      example.countDigits.resolver(107).map(_.toJson).map(Response.jsonString)
-//    case zhttp.http.Method.GET -> Root / example.echo.route =>
-//      example.echo.resolver("hola").map(_.toJson).map(Response.jsonString)
-//  }
-//
-//  val app2: HttpApp[Any, Throwable] = HttpApp.collectM {
-//    case zhttp.http.Method.GET -> Root / example.countDigits.route =>
-//      example.countDigits.resolver(107).map(_.toJson).map(Response.jsonString)
-//  }
+//  val zhttpEndpoints =
+//    List(
+//      example.echo,
+//      example.countDigits,
+//    ).map(_.asZHTTP).reduceOption(_ +++ _).getOrElse(HttpApp.notFound)
 
-  val apps =
+  val documentation =
     List(
       example.echo,
       example.countDigits,
-    ).map(_.asZHTTP).reduceOption(_ +++ _).getOrElse(HttpApp.notFound)
+    ).map(_.doc)
+
+  val apps =
+    List(
+      example.countDigits,
+      example.echo,
+    ).map(_.asZHTTP).reduceOption(_ +++ _).getOrElse(HttpApp.notFound) +++ HttpApp.notFound
 
   private val server =
     Server.port(8090) ++ // Setup port
