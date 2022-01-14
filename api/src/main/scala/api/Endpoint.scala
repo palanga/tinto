@@ -1,17 +1,16 @@
 package api
 
-import zhttp.http.HttpApp
+import zhttp.http.{HttpApp, Method}
 import zio.ZIO
 import zio.console.putStrLn
-import zio.json.JsonDecoder
+import zio.json.{DeriveJsonDecoder, JsonDecoder, JsonEncoder, JsonCodec, DeriveJsonCodec, DeriveJsonEncoder}
 
 import scala.reflect.ClassTag
 
-case class Endpoint[In: ClassTag, Out: ClassTag](
+case class Endpoint[In: JsonDecoder: ClassTag, Out: JsonEncoder: ClassTag](
   route: String,
   resolver: In => ZIO[Any, Throwable, Out],
-  method: Method = Method.GET,
-  decoder: JsonDecoder[In],
+  method: Method,
 ):
 
 //  def map[B](f: Out => B): Endpoint[In, B] =
@@ -26,18 +25,18 @@ case class Endpoint[In: ClassTag, Out: ClassTag](
     import zhttp.*
     import zhttp.http.*
 
-    HttpApp.collectM { case req @ zhttp.http.Method.GET -> Root / `route` =>
+    HttpApp.collectM { case req @ `method` -> Root / `route` =>
       ZIO
         .fromEither(
           req.getBodyAsString
             .toRight("No body")
-            .flatMap(decoder.decodeJson)
+            .flatMap(summon[JsonDecoder[In]].decodeJson)
             .left
             .map(e => new IllegalArgumentException(e))
         )
         .flatMap(resolver)
-        .map(_.toString)
-        .map(Response.text)
+        .map(summon[JsonEncoder[Out]].encodeJson(_, None).toString)
+        .map(Response.jsonString)
     }
 
   def doc =
@@ -49,11 +48,10 @@ case class UnResolvedEndpoint(
   method: Method = Method.GET,
 ):
 
-  def resolveWith[In: ClassTag, Out: ClassTag](
-    f: In => ZIO[Any, Throwable, Out],
-    decoder: JsonDecoder[In],
+  def resolveWith[In: JsonDecoder: ClassTag, Out: JsonEncoder: ClassTag](
+    f: In => ZIO[Any, Throwable, Out]
   ): Endpoint[In, Out] =
-    Endpoint(this.route, f, this.method, decoder)
+    Endpoint(this.route, f, this.method)
 
 object Endpoint:
 
@@ -61,33 +59,33 @@ object Endpoint:
 
   private val noop: Any => ZIO[Any, Throwable, Unit] = _ => ZIO.unit
 
-enum Method:
-  case GET, POST
-
 object example:
+
+  given JsonCodec[Book] = DeriveJsonCodec.gen
 
   val countDigits: Endpoint[Int, Int] =
     Endpoint
       .get("countDigits")
-      .resolveWith(countDigitsZ, zio.json.JsonDecoder.int)
+      .resolveWith(countDigitsZ)
 //      .contramap[Int](_.toString)
 //      .map(_.size)
 
   val echo: Endpoint[String, String] =
     Endpoint
       .get("echo")
-      .resolveWith(echoZ, zio.json.JsonDecoder.string)
+      .resolveWith(echoZ)
 
-  val books: Endpoint[Book, String] =
+  val books: Endpoint[Book, Book] =
     Endpoint
       .get("books")
-      .resolveWith(book => ZIO succeed book.name, zio.json.DeriveJsonDecoder.gen)
+      .resolveWith(bookZ)
 
   case class Book(name: String)
   case class Views(amount: Int)
 
   def echoZ(input: String)     = ZIO succeed input
   def countDigitsZ(input: Int) = ZIO succeed input.toString.length
+  def bookZ(input: Book)       = ZIO succeed input
 
 object zhttpapi extends zio.App:
 
