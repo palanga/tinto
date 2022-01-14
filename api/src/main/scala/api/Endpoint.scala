@@ -1,25 +1,21 @@
 package api
 
-import zhttp.http.{HttpApp, Method}
-import zio.ZIO
+import io.netty.buffer.ByteBuf
+import io.netty.handler.codec.http.{HttpHeaderNames, HttpHeaderValues}
+import io.netty.util.CharsetUtil.UTF_8
+import zhttp.http.{Header, HttpApp, HttpData, Method, Request, Response, URL}
+import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
+import zio.{Chunk, ZIO}
 import zio.console.putStrLn
-import zio.json.{DeriveJsonDecoder, JsonDecoder, JsonEncoder, JsonCodec, DeriveJsonCodec, DeriveJsonEncoder}
+import zio.json.{DeriveJsonCodec, DeriveJsonDecoder, DeriveJsonEncoder, JsonCodec, JsonDecoder, JsonEncoder}
 
 import scala.reflect.ClassTag
 
-case class Endpoint[In: JsonDecoder: ClassTag, Out: JsonEncoder: ClassTag](
+case class Endpoint[In: JsonCodec: ClassTag, Out: JsonCodec: ClassTag](
   route: String,
   resolver: In => ZIO[Any, Throwable, Out],
   method: Method,
 ):
-
-//  def map[B](f: Out => B): Endpoint[In, B] =
-//    val newResolver: In => ZIO[Any, Throwable, B] = this.resolver(_).map(f)
-//    this.copy(resolver = newResolver)
-//
-//  def contramap[A](f: A => In): Endpoint[A, Out] =
-//    val newResolver: A => ZIO[Any, Throwable, Out] = input => this.resolver(f(input))
-//    this.copy(resolver = newResolver)
 
   def asZHTTP: HttpApp[Any, Throwable] =
     import zhttp.*
@@ -40,24 +36,62 @@ case class Endpoint[In: JsonDecoder: ClassTag, Out: JsonEncoder: ClassTag](
     }
 
   def doc =
-    import scala.reflect._
+    import scala.reflect.*
     s"$method /$route = ${classTag[In].runtimeClass.getCanonicalName} -> ${classTag[Out].runtimeClass.getCanonicalName}"
+
+  def fetch(input: In): ZIO[EventLoopGroup & ChannelFactory, Throwable, Out] =
+//    val headers = List(
+//      Header.make(
+//        HttpHeaderNames.CONTENT_TYPE,
+//        HttpHeaderValues.APPLICATION_JSON, /*.concat("; ") + HttpHeaderValues.CHARSET + "=" + UTF_8*/
+//      )
+//    )
+
+    val headers =
+      Header.custom("Accept", "application/json, */*;q=0.5")
+      ::
+      Header.custom("Accept-Encoding", "gzip, deflate")
+      ::
+      Header.custom("Content-Type", "application/json")
+        :: Nil
+
+    ZIO
+      .fromEither(URL.fromString("http://localhost:8080/" + route))
+      .map(method -> _)
+      .flatMap(endpoint => Client.request(Request(endpoint, content = inputToJsonData(input), headers = headers)))
+      .map(response => asString(response.content).get)
+      .map(summon[JsonCodec[Out]].decoder.decodeJson(_).toOption.get)
 
 case class UnResolvedEndpoint(
   route: String,
-  method: Method = Method.GET,
+  method: Method,
 ):
 
-  def resolveWith[In: JsonDecoder: ClassTag, Out: JsonEncoder: ClassTag](
+  def resolveWith[In: JsonCodec: ClassTag, Out: JsonCodec: ClassTag](
     f: In => ZIO[Any, Throwable, Out]
   ): Endpoint[In, Out] =
     Endpoint(this.route, f, this.method)
 
 object Endpoint:
 
-  def get(route: String) = UnResolvedEndpoint(route = route)
+  def get(route: String) = UnResolvedEndpoint(route, Method.GET)
 
   private val noop: Any => ZIO[Any, Throwable, Unit] = _ => ZIO.unit
+
+// TODO la nueva version de zhttp hace esto bien
+def asString(content: HttpData[Any, Any]): Option[String] =
+  content match {
+    case HttpData.CompleteData(data) => Option(new String(data.toArray, UTF_8))
+    case _                           => Option.empty
+  }
+
+def inputToJsonData[In: JsonCodec](input: In): HttpData[Any, Nothing] =
+  import core.chaining.|>
+
+  summon[JsonCodec[In]].encoder
+    .encodeJson(input, None)
+    .toString
+    .getBytes(UTF_8) |> Chunk.fromArray |> HttpData.CompleteData.apply
 
 object example:
 
@@ -67,8 +101,6 @@ object example:
     Endpoint
       .get("countDigits")
       .resolveWith(countDigitsZ)
-//      .contramap[Int](_.toString)
-//      .map(_.size)
 
   val echo: Endpoint[String, String] =
     Endpoint
@@ -103,13 +135,42 @@ object zhttpapi extends zio.App:
   val app  = endpoints.map(_.asZHTTP).reduce(_ +++ _)
 
   private val server =
-    Server.port(8090) ++ // Setup port
+    Server.port(8080) ++ // Setup port
 //      Server.paranoidLeakDetection ++ // Paranoid leak detection (affects performance)
       Server.app(app)
 
+  val fetching =
+    example.books
+      .fetch(example.Book("ñ"))
+      .map(_.toString)
+      .flatMap(putStrLn(_))
+    <&>
+    example.countDigits
+      .fetch(107)
+      .map(_.toString)
+      .flatMap(putStrLn(_))
+    <&>
+    example.echo
+      .fetch("🧉")
+      .map(_.toString)
+      .flatMap(putStrLn(_))
+
   override def run(args: List[String]) =
+    import core.chaining.|>
+//    putStrLn(
+//      JsonDecoder.string.decodeJson(asString(inputToJsonData("ñ")).get).toOption.get
+//    )
+//    *>
     server.make
-      .use(_ => putStrLn(docs) *> putStrLn("Server started on port 8090") *> zio.ZIO.never)
-      .provideCustomLayer(zhttp.service.server.ServerChannelFactory.auto ++ zhttp.service.EventLoopGroup.auto(1))
+      .use(_ =>
+        putStrLn(docs)
+          *> putStrLn("Server started on port 8080")
+          *> fetching
+          *> ZIO.never
+      )
+      .provideCustomLayer(
+        zhttp.service.server.ServerChannelFactory.auto
+          ++ zhttp.service.EventLoopGroup.auto(1)
+          ++ zhttp.service.ChannelFactory.auto
+      )
       .exitCode
-//    Server.start(8090, apps).exitCode

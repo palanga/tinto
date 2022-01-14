@@ -31,9 +31,10 @@ lazy val api = (project in file("api"))
       "dev.zio"               %% "zio"              % "1.0.13",
       "dev.zio"               %% "zio-test"         % "1.0.13", // % "test"
       "dev.zio"               %% "zio-test-sbt"     % "1.0.13" % "test",
-      "com.github.ghostdogpr" %% "caliban"          % "1.3.1",
-      "com.github.ghostdogpr" %% "caliban-zio-http" % "1.3.1",
+      "com.github.ghostdogpr" %% "caliban"          % "1.3.2",
+      "com.github.ghostdogpr" %% "caliban-zio-http" % "1.3.2",
       "dev.zio"               %% "zio-json"         % "0.2.0-M3",
+      "io.d11"                %% "zhttp"            % "1.0.0.0-RC22",
       "ch.qos.logback"         % "logback-classic"  % "1.2.10",
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),

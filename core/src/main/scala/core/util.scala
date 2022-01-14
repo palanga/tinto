@@ -1,5 +1,8 @@
 package core
 
+object chaining:
+  extension [A](self: A) def |>[B](f: A => B): B = f(self)
+
 opaque type NonEmptyString = String
 object NonEmptyString:
   def apply(s: String): Either[Error, NonEmptyString] = if s.isBlank then Left(Error.EmptyTitle) else Right(s)
