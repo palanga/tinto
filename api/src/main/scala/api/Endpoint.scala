@@ -2,9 +2,12 @@ package api
 
 import zhttp.http.HttpApp
 import zio.ZIO
+import zio.console.putStrLn
 import zio.json.JsonDecoder
 
-case class Endpoint[In, Out](
+import scala.reflect.ClassTag
+
+case class Endpoint[In: ClassTag, Out: ClassTag](
   route: String,
   resolver: In => ZIO[Any, Throwable, Out],
   method: Method = Method.GET,
@@ -37,12 +40,19 @@ case class Endpoint[In, Out](
         .map(Response.text)
     }
 
+  def doc =
+    import scala.reflect._
+    s"$method /$route = ${classTag[In].runtimeClass.getCanonicalName} -> ${classTag[Out].runtimeClass.getCanonicalName}"
+
 case class UnResolvedEndpoint(
   route: String,
   method: Method = Method.GET,
 ):
 
-  def resolveWith[In, Out](f: In => ZIO[Any, Throwable, Out], decoder: JsonDecoder[In]): Endpoint[In, Out] =
+  def resolveWith[In: ClassTag, Out: ClassTag](
+    f: In => ZIO[Any, Throwable, Out],
+    decoder: JsonDecoder[In],
+  ): Endpoint[In, Out] =
     Endpoint(this.route, f, this.method, decoder)
 
 object Endpoint:
@@ -68,6 +78,11 @@ object example:
       .get("echo")
       .resolveWith(echoZ, zio.json.JsonDecoder.string)
 
+  val books: Endpoint[Book, String] =
+    Endpoint
+      .get("books")
+      .resolveWith(book => ZIO succeed book.name, zio.json.DeriveJsonDecoder.gen)
+
   case class Book(name: String)
   case class Views(amount: Int)
 
@@ -79,32 +94,24 @@ object zhttpapi extends zio.App:
   import zhttp.http.HttpApp
   import zhttp.service.Server
 
-//  val zhttpEndpoints =
-//    List(
-//      example.echo,
-//      example.countDigits,
-//    ).map(_.asZHTTP).reduceOption(_ +++ _).getOrElse(HttpApp.notFound)
-
-  val documentation =
+  val endpoints =
     List(
       example.echo,
       example.countDigits,
-    ).map(_.doc)
+      example.books,
+    )
 
-  val apps =
-    List(
-      example.countDigits,
-      example.echo,
-    ).map(_.asZHTTP).reduceOption(_ +++ _).getOrElse(HttpApp.notFound) +++ HttpApp.notFound
+  val docs = endpoints.map(_.doc).mkString("\n")
+  val app  = endpoints.map(_.asZHTTP).reduce(_ +++ _)
 
   private val server =
     Server.port(8090) ++ // Setup port
 //      Server.paranoidLeakDetection ++ // Paranoid leak detection (affects performance)
-      Server.app(apps)
+      Server.app(app)
 
   override def run(args: List[String]) =
     server.make
-      .use(_ => zio.console.putStrLn(s"Server started on port 8090") *> zio.ZIO.never)
+      .use(_ => putStrLn(docs) *> putStrLn("Server started on port 8090") *> zio.ZIO.never)
       .provideCustomLayer(zhttp.service.server.ServerChannelFactory.auto ++ zhttp.service.EventLoopGroup.auto(1))
       .exitCode
 //    Server.start(8090, apps).exitCode
