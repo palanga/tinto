@@ -11,7 +11,7 @@ import zio.json.JsonEncoder
 
 import sttp.client3.*
 //import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClient}
-import zio.Runtime
+//import zio.Runtime
 //import sttp.client3.asynchttpclient.zio.AsyncHttpClientZioBackend
 
 object syntax:
@@ -25,34 +25,17 @@ object syntax:
 //  val backend: SttpBackend[scala.concurrent.Future, Any] = FetchBackend()
 
   extension [In, Out](self: Endpoint[In, Out])
-    def fetch(input: In): ZIO[zio.Has[SttpBackend[scala.concurrent.Future, Any]], Throwable, Out] =
+    def fetch(input: In): ZIO[Any, Throwable, Out] =
       (for {
-        // TODO cambiar a un tipo propio de backend para asegurarme de que sea creado con el contexto de ejecucion que va a usar ZIO fromFutureInterrupt
-        backend <- ZIO.environment[zio.Has[SttpBackend[scala.concurrent.Future, Any]]]
-        uri     <- ZIO fromEither sttp.model.Uri.parse(s"http://localhost:8080/${self.route}").left.map(new Exception(_))
-        response <- ZIO fromFutureInterrupt { _ =>
+        uri <- ZIO fromEither sttp.model.Uri.parse(s"http://localhost:8080/${self.route}").left.map(new Exception(_))
+        response <- ZIO fromFutureInterrupt { implicit ec =>
+                      val backend: SttpBackend[scala.concurrent.Future, capabilities.WebSockets] = FetchBackend()
                       sttp.client3.basicRequest
                         .post(uri)
                         .body(self.inCodec.encoder.encodeJson(input, None).toString)
-                        .send(backend.get)
+                        .send(backend)
                     }
       } yield response.body.flatMap(self.outCodec.decoder.decodeJson).left.map(new Exception(_))).absolve
-
-//      ZIO
-//        .fromFuture(implicit ec =>
-//          sttp.client3.basicRequest
-//            .get(
-//              sttp.model.Uri.parse(s"http://localhost:8080/${self.route}").fold(e => throw new Exception(e), identity)
-//            )
-//            .body(self.inCodec.encoder.encodeJson(input, None).toString)
-//            .send(backend)
-//        )
-//        .map(_.body.left.map(new Exception(_)))
-//        .absolve
-//        .map(self.outCodec.decoder.decodeJson(_).left.map(new Exception(_)))
-//        .absolve
-
-//      ???
 
 //    def fetch(input: In): ZIO[EventLoopGroup & ChannelFactory, Throwable, Out] =
 //      ZIO
