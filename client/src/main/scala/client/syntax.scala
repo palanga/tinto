@@ -27,9 +27,10 @@ object syntax:
   extension [In, Out](self: Endpoint[In, Out])
     def fetch(input: In): ZIO[zio.Has[SttpBackend[scala.concurrent.Future, Any]], Throwable, Out] =
       (for {
+        // TODO cambiar a un tipo propio de backend para asegurarme de que sea creado con el contexto de ejecucion que va a usar ZIO fromFutureInterrupt
         backend <- ZIO.environment[zio.Has[SttpBackend[scala.concurrent.Future, Any]]]
         uri     <- ZIO fromEither sttp.model.Uri.parse(s"http://localhost:8080/${self.route}").left.map(new Exception(_))
-        response <- ZIO fromFuture { _ =>
+        response <- ZIO fromFutureInterrupt { _ =>
                       sttp.client3.basicRequest
                         .post(uri)
                         .body(self.inCodec.encoder.encodeJson(input, None).toString)

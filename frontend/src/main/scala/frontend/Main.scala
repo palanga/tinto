@@ -15,6 +15,8 @@ import scala.concurrent.ExecutionContext
 
 object Main:
 
+  import zio.duration.*
+
   val eventsVar = Var(List.empty[String])
 
   val nubeVar = Var("nube var vacia")
@@ -26,17 +28,13 @@ object Main:
   val runtime = zio.Runtime.default
 
   val backendLayer: ZLayer[Any, Nothing, Has[SttpBackend[scala.concurrent.Future, Any]]] =
-    ZIO
-      .succeed(
-        FetchBackend()
-      )
-      .toLayer
+    ZIO.succeed(FetchBackend()).toLayer
 
 //TODO: probar con pasarle el ec cuando creamos el fetch backend
 //  implicit val ec: ExecutionContext = runtime.platform.executor.asEC
 
   def main(args: Array[String]): Unit =
-
+    import zio.duration.*
     runtime.unsafeRunAsync_(
       zio.console.putStrLn("fecheando")
         *>
@@ -45,6 +43,7 @@ object Main:
             .provideCustomLayer(backendLayer)
             .tap(zio.console.putStrLn(_))
             .map(nubeVar.set)
+            .timeout(2.seconds)
           *> zio.console.putStrLn("listo")
     )
     renderOnDomContentLoaded(
