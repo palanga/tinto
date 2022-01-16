@@ -40,22 +40,22 @@ object zhttpapi extends zio.App:
   import server.syntax.asZHTTP
   import client.scalajs.syntax.fetch
 
-  val endpoints =
+  private val endpoints =
     List(
       example.echo,
       example.countDigits,
       example.books,
     )
 
-//  val docs = endpoints.map(_.doc).mkString("\n")
-  val app = endpoints.map(_.asZHTTP).reduce(_ ++ _)
+  private val docs = endpoints.sortBy(_.route).map(_.doc).mkString("\n")
+  private val app  = endpoints.map(_.asZHTTP).reduce(_ ++ _)
 
   private val port = 8080
 
   private val appServer = Server.port(port) ++ Server.app(app @@ cors(CORSConfig(true)))
   //      ++ Server.paranoidLeakDetection // Paranoid leak detection (affects performance)
 
-  val fetching =
+  private val fetching =
     example.books
       .fetch(example.Book("ñ"))
       .map(_.toString)
@@ -74,7 +74,7 @@ object zhttpapi extends zio.App:
   override def run(args: List[String]) =
     appServer.make
       .use(_ =>
-        putStrLn("docs TODO")
+        putStrLn(docs)
           *> putStrLn(s"Server started on port $port")
 //          *> fetching
           *> ZIO.never
