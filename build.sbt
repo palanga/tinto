@@ -7,7 +7,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "tinto"
   )
-  .aggregate(core, web, server, client_scalajs, frontend)
+  .aggregate(core, web, server, client, client_scalajs, frontend)
 
 lazy val core = (project in file("core"))
   .enablePlugins(ScalaJSPlugin)
@@ -52,7 +52,6 @@ lazy val web = (project in file("web"))
   )
 
 lazy val server = (project in file("server"))
-  .enablePlugins(ScalaJSPlugin)
   .settings(
     name := "server",
     libraryDependencies ++= Seq(
@@ -66,21 +65,19 @@ lazy val server = (project in file("server"))
   )
   .dependsOn(web)
 
-//lazy val client_scalajs = (project in file("client/js"))
-//  .enablePlugins(ScalaJSPlugin)
-//  .settings(
-//    name := "client-scalajs",
-//    libraryDependencies ++= Seq(
-//      "dev.zio"                       %%% "zio"          % "1.0.13",
-//      "dev.zio"                       %%% "zio-test"     % "1.0.13" % "test",
-//      "dev.zio"                       %%% "zio-test-sbt" % "1.0.13" % "test",
-//      "dev.zio"                       %%% "zio-json"     % "0.2.0-M3",
-//      "com.softwaremill.sttp.client3" %%% "core"         % "3.3.18",
-//      //      "com.softwaremill.sttp.client3" %%% "async-http-client-backend-zio" % "3.3.18",
-//    ),
-//    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
-//  )
-//  .dependsOn(web)
+lazy val client = (project in file("client/jvm"))
+  .settings(
+    name := "client",
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio"          % "1.0.13",
+      "dev.zio" %% "zio-test"     % "1.0.13" % "test",
+      "dev.zio" %% "zio-test-sbt" % "1.0.13" % "test",
+      "dev.zio" %% "zio-json"     % "0.2.0-M3",
+      "io.d11"  %% "zhttp"        % "1.0.0.0-RC22",
+    ),
+    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
+  )
+  .dependsOn(web)
 
 lazy val client_scalajs = (project in file("client/js"))
   .enablePlugins(ScalaJSPlugin)
@@ -92,7 +89,6 @@ lazy val client_scalajs = (project in file("client/js"))
       "dev.zio"                       %%% "zio-test-sbt" % "1.0.13" % "test",
       "dev.zio"                       %%% "zio-json"     % "0.2.0-M3",
       "com.softwaremill.sttp.client3" %%% "core"         % "3.3.18",
-//      "com.softwaremill.sttp.client3" %%% "async-http-client-backend-zio" % "3.3.18",
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
   )
@@ -126,4 +122,4 @@ lazy val examples = (project in file("examples"))
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
   )
-  .dependsOn(web, server, client_scalajs)
+  .dependsOn(web, server, client)

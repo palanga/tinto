@@ -38,7 +38,7 @@ object zhttpapi extends zio.App:
   import zhttp.service.Server
   import zhttp.http.Middleware.cors
   import server.syntax.asZHTTP
-  import client.scalajs.syntax.fetch
+  import client.syntax.fetch
 
   private val endpoints =
     List(
@@ -76,7 +76,7 @@ object zhttpapi extends zio.App:
       .use(_ =>
         putStrLn(docs)
           *> putStrLn(s"Server started on port $port")
-//          *> fetching
+          *> fetching
           *> ZIO.never
       )
       .provideCustomLayer(

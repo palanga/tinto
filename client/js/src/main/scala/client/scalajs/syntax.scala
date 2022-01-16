@@ -4,8 +4,8 @@ import sttp.capabilities
 import sttp.client3.*
 import sttp.model.Uri
 import web.Endpoint
-import zio.{ZIO, ZManaged}
 import zio.json.JsonEncoder
+import zio.{ZIO, ZManaged}
 
 import scala.concurrent.Future
 
@@ -33,20 +33,3 @@ object syntax:
     case web.Method.GET  => sttp.model.Method.GET
     case web.Method.POST => sttp.model.Method.POST
   }
-
-//  AsyncHttpClientZioBackend.managed().use { backend => ??? }
-
-//  val asyncHttpClient: AsyncHttpClient = DefaultAsyncHttpClient()
-//  val runtime: Runtime[Any]            = Runtime.default
-//  val backend: SttpBackend[Task, Any]  = AsyncHttpClientZioBackend.usingClient(runtime, asyncHttpClient)
-
-//    def fetch(input: In): ZIO[EventLoopGroup & ChannelFactory, Throwable, Out] =
-//      ZIO
-//        .fromEither(URL.fromString("http://localhost:8080/" + self.route))
-//        .flatMap(Client.request(convert(self.method), _, Headers.empty, inputToJsonData(self.inCodec.encoder)(input)))
-//        .flatMap(_.getBodyAsString)
-//        .map(decodeJson[Out](self.outCodec.decoder))
-//        .absolve
-
-//  private def inputToJsonData[A](encoder: JsonEncoder[A])(input: A) =
-//    HttpData.fromString(encoder.encodeJson(input, None).toString, UTF_8)
