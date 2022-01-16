@@ -1,17 +1,18 @@
 package server
 
-import web.{Endpoint, decodeJson}
+import web.*
 import zhttp.*
 import zhttp.http.*
+import zio.json.JsonDecoder
 
 object syntax:
 
   extension (self: Endpoint[_, _])
     def asZHTTP: HttpApp[Any, Throwable] =
       val method = convert(self.method)
-      Http.collectZIO { case req @ method -> Root / self.route => // TODO machea todos los metodos
+      Http.collectZIO { case req @ `method` -> !! / self.route =>
         req.getBodyAsString
-          .map(decodeJson(self.inCodec.decoder))
+          .map(self.inCodec.decoder.decodeJson(_).left.map(new IllegalArgumentException(_)))
           .absolve
           .flatMap(self.resolver)
           .map(self.outCodec.encoder.encodeJson(_, None).toString)

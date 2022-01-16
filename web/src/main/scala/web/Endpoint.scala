@@ -7,9 +7,6 @@ import zio.json.*
 import scala.reflect.ClassTag
 import scala.reflect.classTag
 
-def decodeJson[A](decoder: JsonDecoder[A])(input: String) =
-  decoder.decodeJson(input).left.map(new IllegalArgumentException(_))
-
 case class Endpoint[In, Out](
   route: String,
   resolver: In => ZIO[Any, Throwable, Out],

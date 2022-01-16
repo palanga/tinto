@@ -29,7 +29,7 @@ object example:
   case class Views(amount: Int)
 
   import zio.duration.*
-  def echoZ(input: String)     = ZIO succeed input delay 6.seconds provideLayer zio.clock.Clock.live
+  def echoZ(input: String)     = ZIO succeed input delay 1.second provideLayer zio.clock.Clock.live
   def countDigitsZ(input: Int) = ZIO succeed input.toString.length
   def bookZ(input: Book)       = ZIO succeed input
 
