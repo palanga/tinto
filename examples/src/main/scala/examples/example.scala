@@ -38,7 +38,7 @@ object zhttpapi extends zio.App:
   import zhttp.service.Server
   import zhttp.http.Middleware.cors
   import server.syntax.asZHTTP
-  import client.syntax.fetch
+  import client.scalajs.syntax.fetch
 
   val endpoints =
     List(

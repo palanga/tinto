@@ -17,7 +17,7 @@ object Main:
     )
 
   private val root =
-    import client.syntax.fetch
+    import client.scalajs.syntax.fetch
     Element
       .of(nubeVar.signal)
       .onClick(runtime unsafeRunAsync_ echoEndpoint.fetch("hola nuvolina").map(nubeVar.set))

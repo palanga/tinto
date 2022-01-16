@@ -7,7 +7,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "tinto"
   )
-  .aggregate(core, web, server, client, frontend)
+  .aggregate(core, web, server, client_scalajs, frontend)
 
 lazy val core = (project in file("core"))
   .enablePlugins(ScalaJSPlugin)
@@ -66,10 +66,26 @@ lazy val server = (project in file("server"))
   )
   .dependsOn(web)
 
-lazy val client = (project in file("client"))
+//lazy val client_scalajs = (project in file("client/js"))
+//  .enablePlugins(ScalaJSPlugin)
+//  .settings(
+//    name := "client-scalajs",
+//    libraryDependencies ++= Seq(
+//      "dev.zio"                       %%% "zio"          % "1.0.13",
+//      "dev.zio"                       %%% "zio-test"     % "1.0.13" % "test",
+//      "dev.zio"                       %%% "zio-test-sbt" % "1.0.13" % "test",
+//      "dev.zio"                       %%% "zio-json"     % "0.2.0-M3",
+//      "com.softwaremill.sttp.client3" %%% "core"         % "3.3.18",
+//      //      "com.softwaremill.sttp.client3" %%% "async-http-client-backend-zio" % "3.3.18",
+//    ),
+//    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
+//  )
+//  .dependsOn(web)
+
+lazy val client_scalajs = (project in file("client/js"))
   .enablePlugins(ScalaJSPlugin)
   .settings(
-    name := "client",
+    name := "client-scalajs",
     libraryDependencies ++= Seq(
       "dev.zio"                       %%% "zio"          % "1.0.13",
       "dev.zio"                       %%% "zio-test"     % "1.0.13" % "test",
@@ -99,7 +115,7 @@ lazy val frontend = (project in file("frontend"))
     scalaJSLinkerConfig ~= { _.withSourceMap(false) },
     scalaJSUseMainModuleInitializer := true,
   )
-  .dependsOn(core, web, client)
+  .dependsOn(core, web, client_scalajs)
 
 lazy val examples = (project in file("examples"))
   .enablePlugins(ScalaJSPlugin)
@@ -110,4 +126,4 @@ lazy val examples = (project in file("examples"))
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
   )
-  .dependsOn(web, server, client)
+  .dependsOn(web, server, client_scalajs)
