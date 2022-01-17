@@ -3,6 +3,7 @@ package frontend
 import com.raquo.airstream.core.{EventStream, Signal}
 import com.raquo.airstream.state.{StrictSignal, Var}
 import mira.*
+import mira.Shape.when
 import org.scalajs.dom.window.alert
 import org.scalajs.dom.{KeyCode, console}
 
@@ -16,8 +17,9 @@ object example:
 
   def root: Shape.Edge[zio.ZEnv] =
     Navigation
-      ++ Perris.when(state.selectedTab.map(_ == Tab.Perris))
-      ++ Counter.when(state.selectedTab.map(_ == Tab.Clicks))
+      ++ Perris.showWhen(state.selectedTab.map(_ == Tab.Perris))
+//      ++ Counter.showWhen(state.selectedTab.map(_ == Tab.Clicks))
+      ++ when(state.selectedTab.map(_ != Tab.Clicks)).hide(Counter)
 //    Shape.list(
 ////      Element.of("fetch").onClick(fetchArticles),
 //      Navigation,
@@ -47,7 +49,7 @@ object example:
         .placeholder("El nombre de tu perri")
         .onKeyPress_ { case KeyCode.Enter => state.addPerri }
         .onClick(zio.console.putStrLn("gediendo").ignore),
-      Shape.text(state.error).when(state.error.map(_.nonEmpty)),
+      Shape.text(state.error).showWhen(state.error.map(_.nonEmpty)),
       Shape.list(state.names.map(_.map(Perri))),
     )
 

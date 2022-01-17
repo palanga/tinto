@@ -12,7 +12,8 @@ import scala.language.postfixOps
 
 sealed trait Shape[-R](attributes: List[Attribute[R]]):
 
-  def when(condition: Signal[Boolean]): Edge[R]
+  def showWhen(condition: Signal[Boolean]): Edge[R]
+  def hideWhen(condition: Signal[Boolean]): Edge[R] = showWhen(condition.map(!_))
 
   /**
    * Create a new Shape containing this and that Shapes
@@ -24,6 +25,7 @@ sealed trait Shape[-R](attributes: List[Attribute[R]]):
   protected def addAttribute[R1](attribute: Attribute[R1]): Shape[R & R1]
 
 object Shape:
+
   val empty: Node[Any]                                     = Node("")
   val input: Node[Any]                                     = Node("", kind = "input")
   def text(text: String): Node[Any]                        = Node(text)
@@ -31,6 +33,8 @@ object Shape:
   def text(textSignal: Signal[String | AnyVal]): Node[Any] = empty.bind(textSignal)
   def list[R](shapes: Signal[List[Shape[R]]]): Node[R]     = empty.bindAll(shapes)
   def list[R](shape: Shape[R], shapes: Shape[R]*): Edge[R] = Edge(shapes.prepended(shape))
+
+  def when(condition: Signal[Boolean]): When = When(condition)
 
   /**
    * Alias for [[Shape.text]]
@@ -73,7 +77,7 @@ object Shape:
     def onKeyPress_(f: PartialFunction[KeyCode, Unit]): Node[R] =
       addAttribute(Attribute.OnKeyPress(ZIO succeed (f orElse noop)(_)))
 
-    override def when(condition: Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
+    override def showWhen(condition: Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
 
     override def build(using runtime: Runtime[R]): LaminarElem =
       val laminarMods = attributes.map(toLaminarMod(this))
@@ -105,7 +109,7 @@ object Shape:
      */
     def ::[R1](node: Node[R1]): Edge[R & R1] = this.prependChild(node)
 
-    override def when(condition: Signal[Boolean]): Edge[R] = this.copy(conditionalShow = Some(condition))
+    override def showWhen(condition: Signal[Boolean]): Edge[R] = this.copy(conditionalShow = Some(condition))
 
     override def build(using runtime: Runtime[R]): LaminarElem =
       val childNode = L.div(children.map(_.build), attributes.map(toLaminarMod(this)))
@@ -129,3 +133,7 @@ private[mira] val noopZIO: PartialFunction[Any, ZIO[Any, Nothing, Unit]] = _ => 
 private[mira] type LaminarElem = ReactiveHtmlElement[_ <: dom.html.Element]
 private[mira] type LaminarMod  = Modifier[LaminarElem]
 type KeyCode                   = Int
+
+class When(condition: Signal[Boolean]):
+  def show[R](shape: Shape[R]): Edge[R] = shape.showWhen(condition)
+  def hide[R](shape: Shape[R]): Edge[R] = shape.hideWhen(condition)
