@@ -30,7 +30,7 @@ object Shape:
     private val kind: "div" | "input" = "div",
   ) extends Shape(attributes):
 
-    def bind(signal: Signal[Any]): Node[R] = this.addAttribute(Attribute.BindSignal(signal))
+    def bind(signal: Signal[String | AnyVal]): Node[R] = this.addAttribute(Attribute.BindSignal(signal.map(_.toString)))
 
     def bindAll(signal: Signal[Seq[Shape[Any]]]): Node[R] = this.addAttribute(Attribute.BindSignals(signal))
 

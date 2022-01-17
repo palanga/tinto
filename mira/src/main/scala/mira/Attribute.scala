@@ -5,41 +5,24 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import zio.{Runtime, ZIO}
 
-//enum Option[-T]:
-//
-//  def toLala(elT: T) = ???
-//
-//  case Some(x: Any)
-//  case None
+enum Attribute[-R]:
+  case Placeholder(text: String)
+  case BindSignal(signal: Signal[String])
+  case BindSignals(signal: Signal[Seq[Shape[Any]]]) // TODO String | AnyVal
+  case OnClick(zio: ZIO[R, Nothing, Any])
+  case OnInput(f: String => Any)
+  case OnKeyPress(f: Int => Any)
 
-sealed trait Attribute[-R]:
-  def toLaminarModFor(elem: Shape[_])(using runtime: Runtime[R]): LaminarMod
+  def toLaminarModFor(shape: Shape[_])(using runtime: Runtime[R]): LaminarMod = this match {
+    case Placeholder(text)   => if isInput(shape) then L.placeholder := text else L.emptyMod
+    case BindSignal(signal)  => if isInput(shape) then L.value <-- signal else L.child.text <-- signal
+    case BindSignals(signal) => L.children <-- signal.map(_.map(_.build))
+    case OnClick(zio)        => L.onClick --> { _ => runtime.unsafeRunAsync_(zio) }
+    case OnInput(f)          => L.onInput.mapToValue --> { f(_) }
+    case OnKeyPress(f)       => L.onKeyPress.map(_.keyCode) --> { f(_) }
+  }
 
-object Attribute:
-
-  case class Placeholder(text: String) extends Attribute[Any]:
-    def toLaminarModFor(elem: Shape[_])(using runtime: Runtime[Any]): LaminarMod = elem match {
-      case Shape.Node(_, _, "input") => L.placeholder := text
-      case _                         => L.emptyMod // TODO should not happen
-    }
-
-  case class BindSignal(signal: Signal[Any]) extends Attribute[Any]: // TODO signal de any val o string
-    def toLaminarModFor(elem: Shape[_])(using runtime: Runtime[Any]): LaminarMod = elem match {
-      case Shape.Node(_, _, "input") => L.value <-- signal.map(_.toString)
-      case _                         => L.child.text <-- signal.map(_.toString) // TODO ??? deah
-    }
-
-  case class BindSignals(signal: Signal[Seq[Shape[Any]]]) extends Attribute[Any]:
-    def toLaminarModFor(elem: Shape[_])(using runtime: Runtime[Any]): LaminarMod =
-      L.children <-- signal.map(_.map(_.build))
-
-  case class OnClick[R](zio: ZIO[R, Nothing, Any]) extends Attribute[R]:
-    def toLaminarModFor(elem: Shape[_])(using runtime: Runtime[R]): LaminarMod =
-      L.onClick --> { _ => runtime.unsafeRunAsync_(zio) }
-
-  case class OnInput(f: String => Any) extends Attribute[Any]:
-    def toLaminarModFor(elem: Shape[_])(using runtime: Runtime[Any]): LaminarMod = L.onInput.mapToValue --> { f(_) }
-
-  case class OnKeyPress(f: Int => Any) extends Attribute[Any]:
-    def toLaminarModFor(elem: Shape[_])(using runtime: Runtime[Any]): LaminarMod =
-      L.onKeyPress.map(_.keyCode) --> { f(_) }
+  private def isInput(shape: Shape[_]) = shape match {
+    case Shape.Node(_, _, "input") => true
+    case _                         => false
+  }
