@@ -7,29 +7,29 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import org.scalajs.dom
 import org.scalajs.dom.html
 
-sealed trait Element(attributes: List[Attribute]):
-  def onClick(f: => Any): Element = this.addAttribute(Attribute.OnClick(() => f))
-  def when(condition: Signal[Boolean]): Element.Edge
+sealed trait Shape(attributes: List[Attribute]):
+  def onClick(f: => Any): Shape = this.addAttribute(Attribute.OnClick(() => f))
+  def when(condition: Signal[Boolean]): Shape.Edge
   def build: LaminarElem
-  protected def addAttribute(attribute: Attribute): Element
+  protected def addAttribute(attribute: Attribute): Shape
 
-object Element:
-  val empty: Node                                  = Node("")
-  val input: Node                                  = Node("", kind = "input")
-  def of(text: String): Node                       = Node(text)
-  def ofMany(signal: Signal[List[Element]]): Node  = empty.bindAll(signal) // TODO return edge ?
-  def of(signal: Signal[Any]): Node                = empty.bind(signal)
-  def of(child: Element, children: Element*): Edge = Edge(children.prepended(child))
+object Shape:
+  val empty: Node                               = Node("")
+  val input: Node                               = Node("", kind = "input")
+  def of(text: String): Node                    = Node(text)
+  def ofMany(signal: Signal[List[Shape]]): Node = empty.bindAll(signal) // TODO return edge ?
+  def of(signal: Signal[Any]): Node             = empty.bind(signal)
+  def of(child: Shape, children: Shape*): Edge  = Edge(children.prepended(child))
 
   case class Node(
     private val text: String,
     private val attributes: List[Attribute] = Nil,
     private val kind: "div" | "input" = "div",
-  ) extends Element(attributes):
+  ) extends Shape(attributes):
 
     def when(condition: Signal[Boolean]): Edge = Edge(Seq(this), conditionalShow = Some(condition))
 
-    def bindAll(signal: Signal[Seq[Element]]): Node = this.addAttribute(Attribute.BindSignals(signal))
+    def bindAll(signal: Signal[Seq[Shape]]): Node = this.addAttribute(Attribute.BindSignals(signal))
 
     def bind(signal: Signal[Any]): Node = this.addAttribute(Attribute.BindSignal(signal))
 
@@ -50,10 +50,10 @@ object Element:
     override def addAttribute(attribute: Attribute): Node = this.copy(attributes = attribute :: attributes)
 
   case class Edge(
-    private val children: Seq[Element],
+    private val children: Seq[Shape],
     private val attributes: List[Attribute] = Nil,
     private val conditionalShow: Option[Signal[Boolean]] = None,
-  ) extends Element(attributes):
+  ) extends Shape(attributes):
 
     def when(condition: Signal[Boolean]): Edge = this.copy(conditionalShow = Some(condition))
 
@@ -63,35 +63,35 @@ object Element:
         L.div(L.child.maybe <-- shouldDisplay.map(Option.when(_)(childNode)))
       )
 
-    override def addAttribute(attribute: Attribute): Element = this.copy(attributes = attribute :: attributes)
+    override def addAttribute(attribute: Attribute): Shape = this.copy(attributes = attribute :: attributes)
 
 sealed trait Attribute:
-  def toLaminarModFor(elem: Element): LaminarMod
+  def toLaminarModFor(elem: Shape): LaminarMod
 
 object Attribute:
 
   case class BindSignal(signal: Signal[Any]) extends Attribute:
-    def toLaminarModFor(elem: Element): LaminarMod = elem match {
-      case Element.Node(_, _, "input") => L.value <-- signal.map(_.toString)
-      case _                           => L.child.text <-- signal.map(_.toString) // TODO ??? deah
+    def toLaminarModFor(elem: Shape): LaminarMod = elem match {
+      case Shape.Node(_, _, "input") => L.value <-- signal.map(_.toString)
+      case _                         => L.child.text <-- signal.map(_.toString) // TODO ??? deah
     }
 
-  case class BindSignals(signal: Signal[Seq[Element]]) extends Attribute:
-    def toLaminarModFor(elem: Element): LaminarMod = L.children <-- signal.map(_.map(_.build))
+  case class BindSignals(signal: Signal[Seq[Shape]]) extends Attribute:
+    def toLaminarModFor(elem: Shape): LaminarMod = L.children <-- signal.map(_.map(_.build))
 
   case class OnClick(f: () => Any) extends Attribute:
-    def toLaminarModFor(elem: Element): LaminarMod = L.onClick --> { _ => f() }
+    def toLaminarModFor(elem: Shape): LaminarMod = L.onClick --> { _ => f() }
 
   case class OnInput(f: String => Any) extends Attribute:
-    def toLaminarModFor(elem: Element): LaminarMod = L.onInput.mapToValue --> { f(_) }
+    def toLaminarModFor(elem: Shape): LaminarMod = L.onInput.mapToValue --> { f(_) }
 
   case class OnKeyPress(f: Int => Any) extends Attribute:
-    def toLaminarModFor(elem: Element): LaminarMod = L.onKeyPress.map(_.keyCode) --> { f(_) }
+    def toLaminarModFor(elem: Shape): LaminarMod = L.onKeyPress.map(_.keyCode) --> { f(_) }
 
   case class Placeholder(text: String) extends Attribute:
-    def toLaminarModFor(elem: Element): LaminarMod = elem match {
-      case Element.Node(_, _, "input") => L.placeholder := text
-      case _                           => L.emptyMod // TODO should not happen
+    def toLaminarModFor(elem: Shape): LaminarMod = elem match {
+      case Shape.Node(_, _, "input") => L.placeholder := text
+      case _                         => L.emptyMod // TODO should not happen
     }
 
 private val none: Val[None.type] = Val(None)

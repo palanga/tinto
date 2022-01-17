@@ -14,42 +14,42 @@ object example:
 
   private val state = State()
 
-  def root: Element =
-    Element.of(
+  def root: Shape =
+    Shape.of(
 //      Element.of("fetch").onClick(fetchArticles),
       Navigation,
       Perris.when(state.selectedTab.map(_ == Tab.Perris)),
       Counter.when(state.selectedTab.map(_ == Tab.Clicks)),
     )
 
-  private def Navigation: Element =
-    Element.of(
-      Element.of("perris").onClick(state.showPerris),
-      Element.of("clicks").onClick(state.showClicks),
+  private def Navigation: Shape =
+    Shape.of(
+      Shape.of("perris").onClick(state.showPerris),
+      Shape.of("clicks").onClick(state.showClicks),
     )
 
-  private def Perris: Element =
-    Element.of(
-      Element
+  private def Perris: Shape =
+    Shape.of(
+      Shape
         .of(state.text)
         .onInput(state.setText)
         .placeholder("El nombre de tu perri")
         .onKeyPress { case KeyCode.Enter => state.addPerri },
-      Element.of(state.error).when(state.error.map(_.nonEmpty)),
-      Element.ofMany(state.names.map(_.map(Perri))),
+      Shape.of(state.error).when(state.error.map(_.nonEmpty)),
+      Shape.ofMany(state.names.map(_.map(Perri))),
     )
 
   private def Perri(name: String) =
-    Element.of(
-      Element.of("-").onClick(state.removePerri(name)),
-      Element.of(s"el perri se llama $name"),
+    Shape.of(
+      Shape.of("-").onClick(state.removePerri(name)),
+      Shape.of(s"el perri se llama $name"),
     )
 
-  private def Counter: Element =
-    Element.of(
-      Element.of("+").onClick(state.incrementClicks),
-      Element.of(state.clicks),
-      Element.of("-").onClick(state.decrementClicks),
+  private def Counter: Shape =
+    Shape.of(
+      Shape.of("+").onClick(state.incrementClicks),
+      Shape.of(state.clicks),
+      Shape.of("-").onClick(state.decrementClicks),
     )
 
   case class State(

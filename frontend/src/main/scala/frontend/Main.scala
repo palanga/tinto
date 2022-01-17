@@ -19,6 +19,6 @@ object Main:
 
   private val root =
     import client.scalajs.syntax.fetch
-    Element
+    Shape
       .of(nubeVar.signal)
       .onClick(runtime unsafeRunAsync_ echoEndpoint.fetch("hola nuvolina").map(nubeVar.set))
