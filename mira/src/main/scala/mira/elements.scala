@@ -1,4 +1,4 @@
-package frontend
+package mira
 
 import com.raquo.domtypes.generic.Modifier
 import com.raquo.laminar.api.L

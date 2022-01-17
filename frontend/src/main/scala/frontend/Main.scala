@@ -2,6 +2,7 @@ package frontend
 
 import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
+import mira.*
 
 object Main:
 
@@ -13,7 +14,7 @@ object Main:
     renderOnDomContentLoaded(
       org.scalajs.dom.document.querySelector("#app"),
       root.build,
-//      example.root.build
+//      example.root.build,
     )
 
   private val root =

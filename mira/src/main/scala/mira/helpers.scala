@@ -1,4 +1,4 @@
-package frontend
+package mira
 
 import org.scalajs.dom.console
 

@@ -36,7 +36,5 @@ object Endpoint:
   def get(route: String)  = UnResolvedEndpoint(route, Method.GET)
   def post(route: String) = UnResolvedEndpoint(route, Method.POST)
 
-  private val noop: Any => ZIO[Any, Throwable, Unit] = _ => ZIO.unit
-
 enum Method:
   case GET, POST

@@ -2,6 +2,7 @@ package frontend
 
 import com.raquo.airstream.state.Var
 import core.{Article, Customer, Ident, Item, Nat, PlaceOrderForm}
+import mira.*
 
 case class State(
   articles: Var[List[Ident[Article]]],

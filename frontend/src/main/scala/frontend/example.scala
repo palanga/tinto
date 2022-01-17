@@ -2,6 +2,7 @@ package frontend
 
 import com.raquo.airstream.core.{EventStream, Signal}
 import com.raquo.airstream.state.{StrictSignal, Var}
+import mira.*
 import org.scalajs.dom.window.alert
 import org.scalajs.dom.{KeyCode, console}
 
@@ -21,12 +22,6 @@ object example:
       Counter.when(state.selectedTab.map(_ == Tab.Clicks)),
     )
 
-  private def Perri(name: String) =
-    Element.of(
-      Element.of("-").onClick(state.removePerri(name)),
-      Element.of(s"el perri se llama $name"),
-    )
-
   private def Navigation: Element =
     Element.of(
       Element.of("perris").onClick(state.showPerris),
@@ -44,15 +39,18 @@ object example:
       Element.ofMany(state.names.map(_.map(Perri))),
     )
 
+  private def Perri(name: String) =
+    Element.of(
+      Element.of("-").onClick(state.removePerri(name)),
+      Element.of(s"el perri se llama $name"),
+    )
+
   private def Counter: Element =
     Element.of(
       Element.of("+").onClick(state.incrementClicks),
       Element.of(state.clicks),
       Element.of("-").onClick(state.decrementClicks),
     )
-
-  enum Tab:
-    case Perris, Clicks
 
   case class State(
     private val _selectedTab: Var[Tab] = Var(Tab.Perris),
@@ -84,16 +82,23 @@ object example:
 
     def removePerri(name: String) = dispatch(s"remove perri: $name")(_names.update(_.filterNot(_ == name)))
 
-    def selectedTab = _selectedTab.signal
-    def clicks      = _clicks.signal
-    def text        = _text.signal
-    def names       = _names.signal
-    def error       = _error.signal
-
     private def dispatch(info: String = "")(f: => Any): Unit = asynchronously(debug(this)(info)(f))
+
+    def selectedTab = _selectedTab.signal
+
+    def error = _error.signal
 
     override def toString: String =
       s"""|state:
           |  clicks: ${clicks.now()}
           |  text: ${text.now()}
           |  names: ${names.now().mkString("[", ", ", "]")}""".stripMargin
+
+    def clicks = _clicks.signal
+
+    def text = _text.signal
+
+    def names = _names.signal
+
+  enum Tab:
+    case Perris, Clicks
