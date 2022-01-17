@@ -14,42 +14,48 @@ object example:
 
   private val state = State()
 
-  def root: Shape[Any] =
+  def root: Shape.Edge[zio.ZEnv] =
+    Navigation
+      ++ Perris.when(state.selectedTab.map(_ == Tab.Perris))
+      ++ Counter.when(state.selectedTab.map(_ == Tab.Clicks))
+//    Shape.list(
+////      Element.of("fetch").onClick(fetchArticles),
+//      Navigation,
+//      Perris.when(state.selectedTab.map(_ == Tab.Perris)),
+//      Counter.when(state.selectedTab.map(_ == Tab.Clicks)),
+//    )
+
+  import zio.duration.*
+
+  private def Navigation =
     Shape.list(
-//      Element.of("fetch").onClick(fetchArticles),
-      Navigation,
-      Perris.when(state.selectedTab.map(_ == Tab.Perris)),
-      Counter.when(state.selectedTab.map(_ == Tab.Clicks)),
+      Shape.text("perris").onClick(zio.console.putStrLn("mirando perris").delay(1.second).!).onClick_(state.showPerris),
+      Shape.text("clicks").onClick_(state.showClicks),
     )
 
-  private def Navigation: Shape[Any] =
-    Shape.list(
-      Shape.text("perris").onClick(state.showPerris),
-      Shape.text("clicks").onClick(state.showClicks),
-    )
-
-  private def Perris: Shape[Any] =
+  private def Perris =
     Shape.list(
       Shape
         .text(state.text)
         .onInput(state.setText)
         .placeholder("El nombre de tu perri")
-        .onKeyPress { case KeyCode.Enter => state.addPerri },
+        .onKeyPress { case KeyCode.Enter => state.addPerri }
+        .onClick(zio.console.putStrLn("gediendo").ignore),
       Shape.text(state.error).when(state.error.map(_.nonEmpty)),
       Shape.list(state.names.map(_.map(Perri))),
     )
 
   private def Perri(name: String) =
     Shape.list(
-      Shape.text("-").onClick(state.removePerri(name)),
+      Shape.text("-").onClick_(state.removePerri(name)),
       Shape.text(s"el perri se llama $name"),
     )
 
   private def Counter =
     Shape.list(
-      Shape.text("+").onClick(state.incrementClicks),
+      Shape.text("+").onClick_(state.incrementClicks),
       Shape.text(state.clicks),
-      Shape.text("-").onClick(state.decrementClicks),
+      Shape.text("-").onClick_(state.decrementClicks),
     )
 
   case class State(
@@ -82,7 +88,7 @@ object example:
 
     def removePerri(name: String) = dispatch(s"remove perri: $name")(_names.update(_.filterNot(_ == name)))
 
-    private def dispatch(info: String = "")(f: => Any): Unit = asynchronously(debug(this)(info)(f))
+    private def dispatch(info: String = "")(f: => Any) = asynchronously(debug(this)(info)(f))
 
     def selectedTab = _selectedTab.signal
 

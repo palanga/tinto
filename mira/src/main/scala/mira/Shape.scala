@@ -9,20 +9,20 @@ import zio.{Runtime, ZIO}
 
 sealed trait Shape[-R](attributes: List[Attribute[R]]):
 
-  def onClick[R1](zio: ZIO[R1, Nothing, Any]): Shape[R & R1] = this.addAttribute(Attribute.OnClick(zio))
-  def onClick(f: => Unit): Shape[R]                          = this.addAttribute(Attribute.OnClick(ZIO succeed f))
   def when(condition: Signal[Boolean]): Shape.Edge[R]
+  def ++[R1](that: Shape[R1]): Shape.Edge[R & R1] = Shape.Edge(this :: that :: Nil)
+
   def build(using runtime: Runtime[R]): LaminarElem
 
   protected def addAttribute[R1](attribute: Attribute[R1]): Shape[R & R1]
 
 object Shape:
-  val empty: Node[Any]                                        = Node("")
-  val input: Node[Any]                                        = Node("", kind = "input")
-  def text(text: String | AnyVal): Node[Any]                  = Node(text.toString)
-  def text(text: Signal[String | AnyVal]): Node[Any]          = empty.bind(text)
-  def list[R](shapes: Signal[List[Shape[R]]]): Node[R]        = empty.bindAll(shapes)
-  def list(shape: Shape[Any], shapes: Shape[Any]*): Edge[Any] = Edge(shapes.prepended(shape))
+  val empty: Node[Any]                                     = Node("")
+  val input: Node[Any]                                     = Node("", kind = "input")
+  def text(text: String | AnyVal): Node[Any]               = Node(text.toString)
+  def text(text: Signal[String | AnyVal]): Node[Any]       = empty.bind(text)
+  def list[R](shapes: Signal[List[Shape[R]]]): Node[R]     = empty.bindAll(shapes)
+  def list[R](shape: Shape[R], shapes: Shape[R]*): Edge[R] = Edge(shapes.prepended(shape))
 
   case class Node[-R](
     private val text: String,
@@ -35,6 +35,10 @@ object Shape:
     def bindAll[R1](signal: Signal[Seq[Shape[R1]]]): Node[R & R1] = this.addAttribute(Attribute.BindSignals(signal))
 
     def placeholder(text: String): Node[R] = this.addAttribute(Attribute.Placeholder(text))
+
+    def onClick[R1](zio: ZIO[R1, Nothing, Any]): Node[R & R1] = this.addAttribute(Attribute.OnClick(zio))
+
+    def onClick_(f: => Unit): Node[R] = this.addAttribute(Attribute.OnClick(ZIO succeed f))
 
     def onInput(f: String => Unit): Node[R] = this.copy(kind = "input").addAttribute(Attribute.OnInput(f))
 
@@ -59,6 +63,10 @@ object Shape:
     private val attributes: List[Attribute[R]] = Nil,
     private val conditionalShow: Option[Signal[Boolean]] = None,
   ) extends Shape(attributes):
+
+    def onClick[R1](zio: ZIO[R1, Nothing, Any]): Edge[R & R1] = this.addAttribute(Attribute.OnClick(zio))
+
+    def onClick(f: => Unit): Edge[R] = this.addAttribute(Attribute.OnClick(ZIO succeed f))
 
     override def when(condition: Signal[Boolean]): Edge[R] = this.copy(conditionalShow = Some(condition))
 
