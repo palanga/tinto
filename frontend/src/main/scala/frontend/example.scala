@@ -27,6 +27,12 @@ object example:
 
   import zio.duration.*
 
+  val a: Shape.Edge[zio.console.Console & zio.clock.Clock] = Shape.empty :: Navigation
+
+  val a1: Shape.Edge[zio.console.Console & zio.clock.Clock] = Shape.empty +: Navigation
+
+  val b: Shape.Edge[zio.console.Console & zio.clock.Clock] = Navigation ++ Perris
+
   private def Navigation =
     Shape.list(
       Shape.text("perris").onClick(zio.console.putStrLn("mirando perris").delay(1.second).!).onClick_(state.showPerris),
