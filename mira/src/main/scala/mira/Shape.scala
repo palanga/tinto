@@ -5,7 +5,6 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import org.scalajs.dom
-import org.scalajs.dom.html
 import zio.{Runtime, ZIO}
 
 sealed trait Shape(attributes: List[Attribute]):

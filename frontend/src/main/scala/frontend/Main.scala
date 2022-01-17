@@ -30,6 +30,6 @@ object Main:
       div(
         fetchZIO.build,
         fetchNoZIO.build,
+        example.root.build,
       ),
-//      example.root.build,
     )

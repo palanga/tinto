@@ -10,6 +10,12 @@ sealed trait Attribute:
 
 object Attribute:
 
+  case class Placeholder(text: String) extends Attribute:
+    def toLaminarModFor(elem: Shape)(using runtime: Runtime[Any]): LaminarMod = elem match {
+      case Shape.Node(_, _, "input") => L.placeholder := text
+      case _                         => L.emptyMod // TODO should not happen
+    }
+
   case class BindSignal(signal: Signal[Any]) extends Attribute:
     def toLaminarModFor(elem: Shape)(using runtime: Runtime[Any]): LaminarMod = elem match {
       case Shape.Node(_, _, "input") => L.value <-- signal.map(_.toString)
@@ -29,9 +35,3 @@ object Attribute:
 
   case class OnKeyPress(f: Int => Any) extends Attribute:
     def toLaminarModFor(elem: Shape)(using runtime: Runtime[Any]): LaminarMod = L.onKeyPress.map(_.keyCode) --> { f(_) }
-
-  case class Placeholder(text: String) extends Attribute:
-    def toLaminarModFor(elem: Shape)(using runtime: Runtime[Any]): LaminarMod = elem match {
-      case Shape.Node(_, _, "input") => L.placeholder := text
-      case _                         => L.emptyMod // TODO should not happen
-    }
