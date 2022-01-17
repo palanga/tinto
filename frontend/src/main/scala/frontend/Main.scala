@@ -10,17 +10,26 @@ object Main:
   private val nubeVar      = Var("nube var vacia")
   private val echoEndpoint = web.Endpoint.post("echo").resolveWith((in: String) => zio.ZIO.succeed(in))
 
-  private val root =
+  implicit val runtime: Runtime[ZEnv] = Runtime.default
+
+  private val fetchZIO =
     import client.scalajs.syntax.fetch
     Shape
-      .of(nubeVar.signal)
-      .onClick(runtime unsafeRunAsync_ echoEndpoint.fetch("hola nuvolina").map(nubeVar.set))
+      .text(nubeVar.signal)
+      .onClick(echoEndpoint.fetch("hola nuvolina").map(nubeVar.set).ignore)
 
-  given runtime: Runtime[ZEnv] = Runtime.default
+  private val fetchNoZIO =
+    import client.scalajs.syntax.fetch
+    Shape
+      .text(nubeVar.signal)
+      .onClick(runtime unsafeRunAsync_ echoEndpoint.fetch("hola nuvolina no zio").map(nubeVar.set))
 
   def main(args: Array[String]): Unit =
     renderOnDomContentLoaded(
       org.scalajs.dom.document.querySelector("#app"),
-      root.build,
+      div(
+        fetchZIO.build,
+        fetchNoZIO.build,
+      ),
 //      example.root.build,
     )

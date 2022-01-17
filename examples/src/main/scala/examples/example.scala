@@ -29,7 +29,7 @@ object example:
   case class Views(amount: Int)
 
   import zio.duration.*
-  def echoZ(input: String)     = ZIO succeed input delay 1.second provideLayer zio.clock.Clock.live
+  def echoZ(input: String)     = ZIO succeed input /*delay 1.second provideLayer zio.clock.Clock.live*/
   def countDigitsZ(input: Int) = ZIO succeed input.toString.length
   def bookZ(input: Book)       = ZIO succeed input
 
@@ -52,6 +52,7 @@ object zhttpapi extends zio.App:
 
   private val port = 8080
 
+  // TODO probar si hace algo realmente el cors
   private val appServer = Server.port(port) ++ Server.app(app @@ cors(CORSConfig(true)))
   //      ++ Server.paranoidLeakDetection // Paranoid leak detection (affects performance)
 
