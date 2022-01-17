@@ -14,9 +14,10 @@ object Main:
 
   private val fetchZIO =
     import client.scalajs.syntax.fetch
+    import zio.duration.*
     Shape
       .text(nubeVar.signal)
-      .onClick(echoEndpoint.fetch("hola nuvolina").map(nubeVar.set).ignore)
+      .onClick(echoEndpoint.fetch("hola nuvolina").tap(zio.console.putStrLn(_)).delay(1.second).map(nubeVar.set).ignore)
 
   private val fetchNoZIO =
     import client.scalajs.syntax.fetch

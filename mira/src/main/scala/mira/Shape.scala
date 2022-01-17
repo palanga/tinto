@@ -7,67 +7,69 @@ import com.raquo.laminar.nodes.ReactiveHtmlElement
 import org.scalajs.dom
 import zio.{Runtime, ZIO}
 
-sealed trait Shape(attributes: List[Attribute]):
+sealed trait Shape[-R](attributes: List[Attribute[R]]):
 
-  def onClick(zio: ZIO[Any, Nothing, Any]): Shape = this.addAttribute(Attribute.OnClick(zio))
-  def onClick(f: => Unit): Shape                  = this.addAttribute(Attribute.OnClick(ZIO succeed f))
-  def when(condition: Signal[Boolean]): Shape.Edge
-  def build(using runtime: Runtime[Any]): LaminarElem
+  def onClick[R1](zio: ZIO[R1, Nothing, Any]): Shape[R & R1] = this.addAttribute(Attribute.OnClick(zio))
+  def onClick(f: => Unit): Shape[R]                          = this.addAttribute(Attribute.OnClick(ZIO succeed f))
+  def when(condition: Signal[Boolean]): Shape.Edge[R]
+  def build(using runtime: Runtime[R]): LaminarElem
 
-  protected def addAttribute(attribute: Attribute): Shape
+  protected def addAttribute[R1](attribute: Attribute[R1]): Shape[R & R1]
 
 object Shape:
-  val empty: Node                               = Node("")
-  val input: Node                               = Node("", kind = "input")
-  def text(text: String | AnyVal): Node         = Node(text.toString)
-  def text(text: Signal[String | AnyVal]): Node = empty.bind(text)
-  def list(shapes: Signal[List[Shape]]): Node   = empty.bindAll(shapes) // TODO return edge ?
-  def list(shape: Shape, shapes: Shape*): Edge  = Edge(shapes.prepended(shape))
+  val empty: Node[Any]                                        = Node("")
+  val input: Node[Any]                                        = Node("", kind = "input")
+  def text(text: String | AnyVal): Node[Any]                  = Node(text.toString)
+  def text(text: Signal[String | AnyVal]): Node[Any]          = empty.bind(text)
+  def list(shapes: Signal[List[Shape[Any]]]): Node[Any]       = empty.bindAll(shapes) // TODO return edge ?
+  def list(shape: Shape[Any], shapes: Shape[Any]*): Edge[Any] = Edge(shapes.prepended(shape))
 
-  case class Node(
+  case class Node[-R](
     private val text: String,
-    private val attributes: List[Attribute] = Nil,
+    private val attributes: List[Attribute[R]] = Nil,
     private val kind: "div" | "input" = "div",
   ) extends Shape(attributes):
 
-    def bind(signal: Signal[Any]): Node = this.addAttribute(Attribute.BindSignal(signal))
+    def bind(signal: Signal[Any]): Node[R] = this.addAttribute(Attribute.BindSignal(signal))
 
-    def bindAll(signal: Signal[Seq[Shape]]): Node = this.addAttribute(Attribute.BindSignals(signal))
+    def bindAll(signal: Signal[Seq[Shape[Any]]]): Node[R] = this.addAttribute(Attribute.BindSignals(signal))
 
-    def placeholder(text: String): Node = this.addAttribute(Attribute.Placeholder(text))
+    def placeholder(text: String): Node[R] = this.addAttribute(Attribute.Placeholder(text))
 
-    def onInput(f: String => Unit): Node = this.copy(attributes = Attribute.OnInput(f) :: attributes, kind = "input")
+    def onInput(f: String => Unit): Node[R] = this.copy(kind = "input").addAttribute(Attribute.OnInput(f))
 
-    def onKeyPress(f: KeyCode => Unit): Node = this.addAttribute(Attribute.OnKeyPress(f))
+    def onKeyPress(f: KeyCode => Unit): Node[R] = this.addAttribute(Attribute.OnKeyPress(f))
 
-    def onKeyPress(f: PartialFunction[KeyCode, Unit]): Node = this.addAttribute(Attribute.OnKeyPress(f orElse noop))
+    def onKeyPress(f: PartialFunction[KeyCode, Unit]): Node[R] = this.addAttribute(Attribute.OnKeyPress(f orElse noop))
 
-    override def when(condition: Signal[Boolean]): Edge = Edge(Seq(this), conditionalShow = Some(condition))
+    override def when(condition: Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
 
-    override def build(using runtime: Runtime[Any]): LaminarElem =
+    override def build(using runtime: Runtime[R]): LaminarElem =
       val laminarMods = attributes.map(_.toLaminarModFor(this))
       this.kind match {
         case "div"   => L.div(text, laminarMods)
         case "input" => L.input(laminarMods)
       }
 
-    override def addAttribute(attribute: Attribute): Node = this.copy(attributes = attribute :: attributes)
+    override def addAttribute[R1](attribute: Attribute[R1]): Node[R & R1] =
+      this.copy(attributes = attribute :: attributes)
 
-  case class Edge(
-    private val children: Seq[Shape],
-    private val attributes: List[Attribute] = Nil,
+  case class Edge[-R](
+    private val children: Seq[Shape[R]],
+    private val attributes: List[Attribute[R]] = Nil,
     private val conditionalShow: Option[Signal[Boolean]] = None,
   ) extends Shape(attributes):
 
-    override def when(condition: Signal[Boolean]): Edge = this.copy(conditionalShow = Some(condition))
+    override def when(condition: Signal[Boolean]): Edge[R] = this.copy(conditionalShow = Some(condition))
 
-    override def build(using runtime: Runtime[Any]): LaminarElem =
+    override def build(using runtime: Runtime[R]): LaminarElem =
       val childNode = L.div(children.map(_.build), attributes.map(_.toLaminarModFor(this)))
       conditionalShow.fold(childNode)(shouldDisplay =>
         L.div(L.child.maybe <-- shouldDisplay.map(Option.when(_)(childNode)))
       )
 
-    override def addAttribute(attribute: Attribute): Shape = this.copy(attributes = attribute :: attributes)
+    override def addAttribute[R1](attribute: Attribute[R1]): Edge[R & R1] =
+      this.copy(attributes = attribute :: attributes)
 
 private[mira] val none: Val[None.type]             = Val(None)
 private[mira] val always: Val[Boolean]             = Val(true)

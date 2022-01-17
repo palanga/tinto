@@ -14,7 +14,7 @@ object example:
 
   private val state = State()
 
-  def root: Shape =
+  def root: Shape[Any] =
     Shape.list(
 //      Element.of("fetch").onClick(fetchArticles),
       Navigation,
@@ -22,13 +22,13 @@ object example:
       Counter.when(state.selectedTab.map(_ == Tab.Clicks)),
     )
 
-  private def Navigation: Shape =
+  private def Navigation: Shape[Any] =
     Shape.list(
       Shape.text("perris").onClick(state.showPerris),
       Shape.text("clicks").onClick(state.showClicks),
     )
 
-  private def Perris: Shape =
+  private def Perris: Shape[Any] =
     Shape.list(
       Shape
         .text(state.text)
@@ -45,7 +45,7 @@ object example:
       Shape.text(s"el perri se llama $name"),
     )
 
-  private def Counter: Shape =
+  private def Counter =
     Shape.list(
       Shape.text("+").onClick(state.incrementClicks),
       Shape.text(state.clicks),
