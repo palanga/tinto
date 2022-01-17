@@ -21,7 +21,7 @@ object Shape:
   val input: Node[Any]                                        = Node("", kind = "input")
   def text(text: String | AnyVal): Node[Any]                  = Node(text.toString)
   def text(text: Signal[String | AnyVal]): Node[Any]          = empty.bind(text)
-  def list(shapes: Signal[List[Shape[Any]]]): Node[Any]       = empty.bindAll(shapes) // TODO return edge ?
+  def list[R](shapes: Signal[List[Shape[R]]]): Node[R]        = empty.bindAll(shapes)
   def list(shape: Shape[Any], shapes: Shape[Any]*): Edge[Any] = Edge(shapes.prepended(shape))
 
   case class Node[-R](
@@ -32,7 +32,7 @@ object Shape:
 
     def bind(signal: Signal[String | AnyVal]): Node[R] = this.addAttribute(Attribute.BindSignal(signal.map(_.toString)))
 
-    def bindAll(signal: Signal[Seq[Shape[Any]]]): Node[R] = this.addAttribute(Attribute.BindSignals(signal))
+    def bindAll[R1](signal: Signal[Seq[Shape[R1]]]): Node[R & R1] = this.addAttribute(Attribute.BindSignals(signal))
 
     def placeholder(text: String): Node[R] = this.addAttribute(Attribute.Placeholder(text))
 

@@ -9,7 +9,7 @@ import zio.{Runtime, ZIO}
 enum Attribute[-R]:
   case Placeholder(text: String)
   case BindSignal(signal: Signal[String])
-  case BindSignals(signal: Signal[Seq[Shape[Any]]]) // TODO String | AnyVal
+  case BindSignals(signal: Signal[Seq[Shape[R]]])
   case OnClick(zio: ZIO[R, Nothing, Any])
   case OnInput(f: String => Any)
   case OnKeyPress(f: Int => Any)
