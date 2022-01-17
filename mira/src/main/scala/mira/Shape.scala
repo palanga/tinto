@@ -45,7 +45,7 @@ object Shape:
     override def when(condition: Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
 
     override def build(using runtime: Runtime[R]): LaminarElem =
-      val laminarMods = attributes.map(_.toLaminarModFor(this))
+      val laminarMods = attributes.map(toLaminarMod(this))
       this.kind match {
         case "div"   => L.div(text, laminarMods)
         case "input" => L.input(laminarMods)
@@ -63,7 +63,7 @@ object Shape:
     override def when(condition: Signal[Boolean]): Edge[R] = this.copy(conditionalShow = Some(condition))
 
     override def build(using runtime: Runtime[R]): LaminarElem =
-      val childNode = L.div(children.map(_.build), attributes.map(_.toLaminarModFor(this)))
+      val childNode = L.div(children.map(_.build), attributes.map(toLaminarMod(this)))
       conditionalShow.fold(childNode)(shouldDisplay =>
         L.div(L.child.maybe <-- shouldDisplay.map(Option.when(_)(childNode)))
       )
