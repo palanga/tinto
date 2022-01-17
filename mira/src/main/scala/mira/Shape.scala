@@ -56,13 +56,22 @@ object Shape:
 
     def onClick[R1](zio: ZIO[R1, Nothing, Any]): Node[R & R1] = this.addAttribute(Attribute.OnClick(zio))
 
-    def onClick_(f: => Unit): Node[R] = this.addAttribute(Attribute.OnClick(ZIO succeed f))
+    def onClick_(f: => Unit): Node[R] = addAttribute(Attribute.OnClick(ZIO succeed f))
 
-    def onInput(f: String => Unit): Node[R] = this.copy(kind = "input").addAttribute(Attribute.OnInput(f))
+    def onInput_(f: String => Unit): Node[R] = addAttribute(Attribute.OnInput(ZIO succeed f(_))).copy(kind = "input")
 
-    def onKeyPress(f: KeyCode => Unit): Node[R] = this.addAttribute(Attribute.OnKeyPress(f))
+    def onInput[R1](zio: String => ZIO[R1, Nothing, Any]): Node[R & R1] =
+      addAttribute(Attribute.OnInput(zio)).copy(kind = "input")
 
-    def onKeyPress(f: PartialFunction[KeyCode, Unit]): Node[R] = this.addAttribute(Attribute.OnKeyPress(f orElse noop))
+    def onKeyPress_(f: KeyCode => Unit): Node[R] = addAttribute(Attribute.OnKeyPress(ZIO succeed f(_)))
+
+    def onKeyPress[R1](f: KeyCode => ZIO[R1, Nothing, Any]): Node[R & R1] = addAttribute(Attribute.OnKeyPress(f))
+
+    def onKeyPress[R1](f: PartialFunction[KeyCode, ZIO[R1, Nothing, Any]]): Node[R & R1] =
+      addAttribute(Attribute.OnKeyPress(f.orElse(noopZIO)))
+
+    def onKeyPress_(f: PartialFunction[KeyCode, Unit]): Node[R] =
+      addAttribute(Attribute.OnKeyPress(ZIO succeed (f orElse noop)(_)))
 
     override def when(condition: Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
 
@@ -112,9 +121,10 @@ object Shape:
      */
     private def prependChild[R1](node: Node[R1]): Edge[R & R1] = this.copy(this.children.prepended(node))
 
-private[mira] val none: Val[None.type]             = Val(None)
-private[mira] val always: Val[Boolean]             = Val(true)
-private[mira] val noop: PartialFunction[Any, Unit] = _ => ()
+private[mira] val none: Val[None.type]                                   = Val(None)
+private[mira] val always: Val[Boolean]                                   = Val(true)
+private[mira] val noop: PartialFunction[Any, Unit]                       = _ => ()
+private[mira] val noopZIO: PartialFunction[Any, ZIO[Any, Nothing, Unit]] = _ => ZIO.unit
 
 private[mira] type LaminarElem = ReactiveHtmlElement[_ <: dom.html.Element]
 private[mira] type LaminarMod  = Modifier[LaminarElem]

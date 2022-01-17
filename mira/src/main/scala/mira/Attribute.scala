@@ -11,16 +11,16 @@ enum Attribute[-R]:
   case BindSignal(signal: Signal[String])
   case BindSignals(signal: Signal[Seq[Shape[R]]])
   case OnClick(zio: ZIO[R, Nothing, Any])
-  case OnInput(f: String => Any)
-  case OnKeyPress(f: Int => Any)
+  case OnInput(f: String => ZIO[R, Nothing, Any])
+  case OnKeyPress(f: Int => ZIO[R, Nothing, Any])
 
 def toLaminarMod[R](shape: Shape[_])(attribute: Attribute[R])(using runtime: Runtime[R]): LaminarMod = attribute match {
   case Placeholder(text)   => if isInput(shape) then L.placeholder := text else L.emptyMod
   case BindSignal(signal)  => if isInput(shape) then L.value <-- signal else L.child.text <-- signal
   case BindSignals(signal) => L.children <-- signal.map(_.map(_.build))
   case OnClick(zio)        => L.onClick --> { _ => runtime.unsafeRunAsync_(zio) }
-  case OnInput(f)          => L.onInput.mapToValue --> { f(_) }
-  case OnKeyPress(f)       => L.onKeyPress.map(_.keyCode) --> { f(_) }
+  case OnInput(f)          => L.onInput.mapToValue --> { runtime unsafeRunAsync_ f(_) }
+  case OnKeyPress(f)       => L.onKeyPress.map(_.keyCode) --> { runtime unsafeRunAsync_ f(_) }
 }
 
 private def isInput(shape: Shape[_]) = shape match {

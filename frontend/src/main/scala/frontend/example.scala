@@ -43,9 +43,9 @@ object example:
     Shape.list(
       Shape
         .text(state.text)
-        .onInput(state.setText)
+        .onInput_(state.setText)
         .placeholder("El nombre de tu perri")
-        .onKeyPress { case KeyCode.Enter => state.addPerri }
+        .onKeyPress_ { case KeyCode.Enter => state.addPerri }
         .onClick(zio.console.putStrLn("gediendo").ignore),
       Shape.text(state.error).when(state.error.map(_.nonEmpty)),
       Shape.list(state.names.map(_.map(Perri))),
