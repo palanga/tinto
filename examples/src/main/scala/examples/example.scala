@@ -1,10 +1,52 @@
 package examples
 
-import web.Endpoint
+import web.{Endpoint, v2}
 import zhttp.http.CORSConfig
 import zio.ZIO
 import zio.console.putStrLn
 import zio.json.{DeriveJsonCodec, JsonCodec}
+
+object examplev2 extends zio.App:
+
+  object api:
+    val healthCheck = v2.Endpoint.get("healthcheck")
+    val echo        = v2.Endpoint.post("echo").in[String].out[String].withInCodec.withOutCodec
+    val book        = v2.Endpoint.get("book").out[Book].withOutCodec
+
+  case class Book(name: String)
+
+  given JsonCodec[Book] = DeriveJsonCodec.gen
+
+  object app:
+    import zio.duration.*
+    import zhttp.service.Server
+    import zhttp.http.Middleware.cors
+
+//    List[zhttp.http.HttpApp[zio.console.Console & zio.clock.Clock, Throwable]]
+    val httpApp = List(
+      api.healthCheck.resolveWith(_ => zio.console.putStrLn("ok")),
+      api.echo.resolveWith(ZIO.succeed(_).delay(1.second)),
+      api.book.resolveWith(_ => ZIO succeed Book("Rayuela")),
+    ).map(server.v2.asZHTTP).reduce(_ ++ _)
+
+    val port      = 8080
+    val appServer = Server.port(port) ++ Server.app(httpApp @@ cors(CORSConfig(true)))
+
+  override def run(args: List[String]) =
+    app.appServer.make
+      .use(_ =>
+//          putStrLn(docs)
+//            *>
+        zio.console.putStrLn(s"Server started on port ${app.port}")
+//            *> fetching
+          *> ZIO.never
+      )
+      .provideCustomLayer(
+        zhttp.service.server.ServerChannelFactory.auto
+          ++ zhttp.service.EventLoopGroup.auto(1)
+          ++ zhttp.service.ChannelFactory.auto
+      )
+      .exitCode
 
 object example:
 

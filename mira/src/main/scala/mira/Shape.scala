@@ -5,7 +5,7 @@ import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import org.scalajs.dom
-import zio.{Runtime, ZIO}
+import zio.{Runtime, UIO, ZIO}
 import Shape.*
 
 import scala.language.postfixOps
@@ -67,15 +67,17 @@ object Shape:
     def onInput[R1](zio: String => ZIO[R1, Nothing, Any]): Node[R & R1] =
       addAttribute(Attribute.OnInput(zio)).copy(kind = "input")
 
-    def onKeyPress_(f: KeyCode => Unit): Node[R] = addAttribute(Attribute.OnKeyPress(ZIO succeed f(_)))
-
     def onKeyPress[R1](f: KeyCode => ZIO[R1, Nothing, Any]): Node[R & R1] = addAttribute(Attribute.OnKeyPress(f))
 
     def onKeyPress[R1](f: PartialFunction[KeyCode, ZIO[R1, Nothing, Any]]): Node[R & R1] =
       addAttribute(Attribute.OnKeyPress(f.orElse(noopZIO)))
 
+    def onKeyPress_(f: KeyCode => Unit): Node[R] = addAttribute(Attribute.OnKeyPress(ZIO succeed f(_)))
+
     def onKeyPress_(f: PartialFunction[KeyCode, Unit]): Node[R] =
-      addAttribute(Attribute.OnKeyPress(ZIO succeed (f orElse noop)(_)))
+//      f.
+//      val a: KeyCode => UIO[Unit] = ZIO succeed f(_)
+      onKeyPress(ZIO succeed f(_))
 
     override def showWhen(condition: Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
 

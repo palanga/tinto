@@ -6,6 +6,7 @@ import mira.*
 import mira.Shape.when
 import org.scalajs.dom.window.alert
 import org.scalajs.dom.{KeyCode, console}
+import zio.ZIO
 
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
@@ -37,7 +38,7 @@ object example:
 
   private def Navigation =
     Shape.list(
-      Shape.text("perris").onClick(zio.console.putStrLn("mirando perris").delay(1.second).!).onClick_(state.showPerris),
+      Shape.text("perris").onClick_(state.showPerris),
       Shape.text("clicks").onClick_(state.showClicks),
     )
 
@@ -47,8 +48,7 @@ object example:
         .text(state.text)
         .onInput_(state.setText)
         .placeholder("El nombre de tu perri")
-        .onKeyPress_ { case KeyCode.Enter => state.addPerri }
-        .onClick(zio.console.putStrLn("gediendo").ignore),
+        .onKeyPress { case KeyCode.Enter => state.addPerriZIO },
       Shape.text(state.error).showWhen(state.error.map(_.nonEmpty)),
       Shape.list(state.names.map(_.map(Perri))),
     )
@@ -74,16 +74,16 @@ object example:
     private val _error: Var[String] = Var(""),
   ):
 
-    def showPerris = dispatch("show perris")(_selectedTab.set(Tab.Perris))
-    def showClicks = dispatch("show clicks")(_selectedTab.set(Tab.Clicks))
+    def showPerris = dispatch_("show perris")(_selectedTab.set(Tab.Perris))
+    def showClicks = dispatch_("show clicks")(_selectedTab.set(Tab.Clicks))
 
-    def incrementClicks = dispatch("increment clicks")(_clicks.update(_ + 1))
+    def incrementClicks = dispatch_("increment clicks")(_clicks.update(_ + 1))
 
-    def decrementClicks = dispatch("decrement clicks")(_clicks.update(_ - 1))
+    def decrementClicks = dispatch_("decrement clicks")(_clicks.update(_ - 1))
 
-    def setText(text: String) = dispatch(s"set text: $text")(_text.set(text))
+    def setText(text: String) = dispatch_(s"set text: $text")(_text.set(text))
 
-    def addPerri = dispatch("add perri") {
+    def addPerri = dispatch_("add perri") {
       val name = _text.now()
       if !name.isBlank then
         _names.update(name :: _)
@@ -91,12 +91,47 @@ object example:
         _error.set("")
       else
         val message = "El nombre del perro no puede ser vacío"
-        dispatch(s"error: $message")(_error.set(message))
+        dispatch_(s"error: $message")(_error.set(message))
     }
 
-    def removePerri(name: String) = dispatch(s"remove perri: $name")(_names.update(_.filterNot(_ == name)))
+    def addPerriZIO = dispatch("add perri") {
+      val name = _text.now()
+      if !name.isBlank then
+        ZIO succeed {
+          _names.update(name :: _)
+          _text.set("")
+          _error.set("")
+        }
+      else
+        val message = "El nombre del perro no puede ser vacío"
+        dispatch(s"error: $message")(ZIO succeed _error.set(message))
+    }
 
-    private def dispatch(info: String = "")(f: => Any) = asynchronously(debug(this)(info)(f))
+    def removePerri(name: String) = dispatch_(s"remove perri: $name")(_names.update(_.filterNot(_ == name)))
+
+    private def dispatch_(info: String = "")(f: => Any) = asynchronously(debug(this)(info)(f))
+
+    private def dispatch(info: String = "")(zio: ZIO[Any, Nothing, Any]): ZIO[Any, Nothing, Unit] =
+      debugZIO(this)(info)(zio).forkDaemon.unit
+
+    private def asynchronouslyZIO(zio: ZIO[Any, Nothing, Any]) = zio.forkDaemon
+
+    private def debugZIO(state: Any)(info: String)(zio: ZIO[Any, Nothing, Any]): ZIO[Any, Nothing, Unit] =
+      groupLog(info)
+        *> debugLog("prev " + state.toString)
+        *> zio
+        *> debugLog("next " + state.toString)
+        *> groupLogEnd
+
+    private def groupLog(input: String) = ZIO succeed console.group(input)
+    private def groupLogEnd             = ZIO succeed console.groupEnd()
+    private def debugLog(input: String) = ZIO succeed console.debug(input)
+
+//  console.group(info)
+//  console.debug("prev " + state.toString)
+//  f
+//  console.debug("next " + state.toString)
+//  console.groupEnd()
 
     def selectedTab = _selectedTab.signal
 
