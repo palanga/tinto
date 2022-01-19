@@ -27,7 +27,12 @@ object examplev2 extends zio.App:
       api.healthCheck.resolveWith(_ => zio.console.putStrLn("ok")),
       api.echo.resolveWith(ZIO.succeed(_).delay(1.second)),
       api.book.resolveWith(_ => ZIO succeed Book("Rayuela")),
-    ).map(server.v2.asZHTTP).reduce(_ ++ _)
+    ).map(server.v2.asZHTTP(errorMapper)).reduce(_ ++ _)
+
+    def errorMapper(t: Throwable): zhttp.http.HttpError = t match {
+      case e: zhttp.http.HttpError => e
+      case e                       => zhttp.http.HttpError.InternalServerError(e.getMessage, Some(e.getCause))
+    }
 
     val port      = 8080
     val appServer = Server.port(port) ++ Server.app(httpApp @@ cors(CORSConfig(true)))

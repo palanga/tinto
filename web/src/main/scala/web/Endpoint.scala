@@ -44,7 +44,8 @@ object v2:
   sealed trait Endpoint[In, Out]:
     val method: Method
     val route: String
-    def resolveWith[R](f: In => ZIO[R, Throwable, Out]): ResolvedEndpoint[R, In, Out] = ResolvedEndpoint(this, f)
+    def resolveWith[R](f: In => ZIO[R, Throwable, Out]): EndpointWithResolver[R, In, Out] =
+      EndpointWithResolver(this, f)
 
   sealed trait IncompleteEndpoint[In, Out]
 
@@ -94,7 +95,7 @@ object v2:
     outCodec: JsonCodec[Out],
   ) extends Endpoint[In, Out]
 
-  case class ResolvedEndpoint[-R, In, Out](endpoint: Endpoint[In, Out], resolver: In => ZIO[R, Throwable, Out])
+  case class EndpointWithResolver[-R, In, Out](endpoint: Endpoint[In, Out], resolver: In => ZIO[R, Throwable, Out])
 
   case class DocumentedEndpoint[-R, In, Out](endpoint: Endpoint[In, Out], docs: String)
 

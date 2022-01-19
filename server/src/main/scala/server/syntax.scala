@@ -19,7 +19,7 @@ object syntax:
           .map(Response.json)
       }
 
-  private[server] def convert(method: web.Method) = method match {
+  private def convert(method: web.Method) = method match {
     case web.Method.GET  => zhttp.http.Method.GET
     case web.Method.POST => zhttp.http.Method.POST
   }
@@ -30,32 +30,47 @@ object v2:
 
   // TODO invsetigar la posibilidad de usar map y contramap
   // TODO mejorar los tipos de respuesta de error
-  def asZHTTP[R, In, Out](resolvedEndpoint: ResolvedEndpoint[R, In, Out]): HttpApp[R, Throwable] =
-    val zMethod = syntax.convert(resolvedEndpoint.endpoint.method)
-    resolvedEndpoint.endpoint match {
-      case AnyUnitEndpoint(method, route) =>
-        Http.collectZIO { case `zMethod` -> !! / `route` =>
-          resolvedEndpoint.resolver(()).as(Response.ok)
-        }
-      case InCodecEndpoint(method, route, inCodec) =>
-        Http.collectZIO { case request @ `zMethod` -> !! / `route` =>
-          request.getBodyAsString
-            .map(inCodec.decoder.decodeJson(_).left.map(new IllegalArgumentException(_)))
-            .absolve
-            .flatMap(resolvedEndpoint.resolver)
-            .as(Response.ok)
-        }
-      case OutCodecEndpoint(method, route, outCodec) =>
-        Http.collectZIO { case request @ `zMethod` -> !! / `route` =>
-          resolvedEndpoint.resolver(()).map(outCodec.encoder.encodeJson(_, None).toString).map(Response.json)
-        }
-      case InOutCodecsEndpoint(method, route, inCodec, outCodec) =>
-        Http.collectZIO { case request @ `zMethod` -> !! / `route` =>
-          request.getBodyAsString
-            .map(inCodec.decoder.decodeJson(_).left.map(new IllegalArgumentException(_)))
-            .absolve
-            .flatMap(resolvedEndpoint.resolver)
-            .map(outCodec.encoder.encodeJson(_, None).toString)
-            .map(Response.json)
+  def asZHTTP[R](endpointWithResolver: EndpointWithResolver[R, _, _]): HttpApp[R, Throwable] =
+    endpointWithResolver match {
+      case EndpointWithResolver(endpoint, resolver) =>
+        val zMethod = convert(endpoint.method)
+        Http.collectZIO { case request @ `zMethod` -> !! / endpoint.route =>
+          endpoint match {
+            case _: AnyUnitEndpoint =>
+              resolver(())
+                .as(Response(Status.NO_CONTENT))
+            case endpoint: InCodecEndpoint[_] =>
+              request.getBodyAsString
+                .map(endpoint.inCodec.decoder.decodeJson(_).left.map(HttpError.BadRequest.apply))
+                .absolve
+                .flatMap(resolver)
+                .as(Response(Status.NO_CONTENT))
+            case endpoint: OutCodecEndpoint[_] =>
+              resolver(())
+                .map(endpoint.outCodec.encoder.encodeJson(_, None).toString)
+                .map(Response.json)
+            case endpoint: InOutCodecsEndpoint[_, _] =>
+              request.getBodyAsString
+                .map(endpoint.inCodec.decoder.decodeJson(_).left.map(HttpError.BadRequest.apply))
+                .absolve
+                .flatMap(resolver)
+                .map(endpoint.outCodec.encoder.encodeJson(_, None).toString)
+                .map(Response.json)
+          }
         }
     }
+
+  def asZHTTP[R](errorMapper: Throwable => HttpError)(endpoint: EndpointWithResolver[R, _, _]): HttpApp[R, Nothing] =
+    asZHTTP(endpoint).mapError(errorMapper).catchAll(Http.error)
+
+//  val a: HttpApp[Any, Throwable] = ???
+
+//  val b: Http[Any, HttpError, Request, Response] = a.mapError {
+//    case e: IllegalArgumentException => HttpError.BadRequest(e.getMessage)
+//    case e                           => HttpError.InternalServerError(e.getMessage, Some(e.getCause))
+//  }
+
+  private def convert(method: web.Method) = method match {
+    case web.Method.GET  => zhttp.http.Method.GET
+    case web.Method.POST => zhttp.http.Method.POST
+  }
