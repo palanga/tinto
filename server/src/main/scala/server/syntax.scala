@@ -26,6 +26,41 @@ object syntax:
 
 object v2:
 
+  import Param.*
+
+  val healthRoute: Route0              = Start / "health"
+  val digitsRoute: Route1[String]      = Start / "echo" / StringParam
+  val userPostsRoute: Route2[Int, Int] = Start / "users" / IntParam / "posts" / IntParam
+  val userPostsCommentsRoute: Route3[String, Int, Int] =
+    Start / "users" / StringParam / "posts" / IntParam / "comments" / IntParam
+
+  val usersOrdersRoute: Route0 = Start / "users" / "orders"
+  val a: Route2[Int, String]   = usersOrdersRoute / IntParam / StringParam
+
+  sealed trait Route[-In]
+
+  object Start:
+    def /(path: String): Route0 = ???
+
+  case class Route0() extends Route[Unit]:
+    def /(path: String): Route0          = ???
+    def /[A](param: Param[A]): Route1[A] = ???
+
+  case class Route1[A]() extends Route[A]:
+    def /(path: String): Route1[A]          = ???
+    def /[B](param: Param[B]): Route2[A, B] = ???
+
+  case class Route2[A, B]() extends Route[(A, B)]:
+    def /(path: String): Route2[A, B]          = ???
+    def /[C](param: Param[C]): Route3[A, B, C] = ???
+
+  case class Route3[A, B, C]() extends Route[(A, B, C)]:
+    def /(path: String): Route3[A, B, C] = ???
+
+  enum Param[A]:
+    case IntParam extends Param[Int]
+    case StringParam extends Param[String]
+
   import web.v2.*
 
   // TODO invsetigar la posibilidad de usar map y contramap
