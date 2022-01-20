@@ -16,7 +16,7 @@ object client:
     input: (PathParams, BodyIn)
   ): ZIO[Any, Throwable, BodyOut] =
     val path        = buildPath(endpoint.route, input._1)
-    val uri         = Uri.parse(s"http://localhost:8080/$path").left.map(new Exception(_))
+    val uri         = Uri.parse(s"http://localhost:8080$path").left.map(new Exception(_))
     val method      = convert(endpoint.method)
     val requestBody = encodeRequestBodyP(endpoint, input._2)
     ZIO
@@ -26,7 +26,7 @@ object client:
       .absolve
 
   def fetch[BodyIn, BodyOut](endpoint: Endpoint[BodyIn, BodyOut])(input: BodyIn): ZIO[Any, Throwable, BodyOut] =
-    val uri         = Uri.parse(s"http://localhost:8080/${endpoint.route.path}").left.map(new Exception(_))
+    val uri         = Uri.parse(s"http://localhost:8080${endpoint.route.path}").left.map(new Exception(_))
     val method      = convert(endpoint.method)
     val requestBody = encodeRequestBody(endpoint, input)
     ZIO
@@ -38,9 +38,9 @@ object client:
   private def buildPath[P](route: Route[P], pathParams: Any): String =
     (route, pathParams) match {
       case Route0(path) -> ()                   => path
-      case Route1(prefix, _, path) -> a         => buildPath(prefix, ()) + a.toString + path
-      case Route2(prefix, _, path) -> (a, b)    => buildPath(prefix, a) + b.toString + path
-      case Route3(prefix, _, path) -> (a, b, c) => buildPath(prefix, (a, b)) + c.toString + path
+      case Route1(prefix, _, path) -> a         => buildPath(prefix, ()) + "/" + a.toString + path
+      case Route2(prefix, _, path) -> (a, b)    => buildPath(prefix, a) + "/" + b.toString + path
+      case Route3(prefix, _, path) -> (a, b, c) => buildPath(prefix, (a, b)) + "/" + c.toString + path
       case _                                    => ""
     }
 

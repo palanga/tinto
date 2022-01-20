@@ -6,6 +6,8 @@ import zhttp.http.*
 import zio.ZIO
 import zio.json.{JsonCodec, JsonDecoder}
 
+import java.net.URLDecoder
+
 object v4:
 
   import web.v4.*
@@ -79,7 +81,9 @@ object v4:
         Http.collect { case request @ `zMethod` -> `zPath` => () -> request }
       case Route1(prefix, param, path) if path.isBlank =>
         val prefixPath = zhttp.http.Path(prefix.path.split('/').toList)
-        Http.collect { case request @ `zMethod` -> `prefixPath` / p => param.fromStringUnsafe(p) -> request }
+        Http.collect { case request @ `zMethod` -> `prefixPath` / p =>
+          param.fromStringUnsafe(URLDecoder.decode(p, "UTF-8")) -> request
+        }
       case Route1(prefix, param, path) =>
         val prefixPath = zhttp.http.Path(prefix.path.split('/').toList)
         Http.collect { case request @ `zMethod` -> `prefixPath` / p / `path` => param.fromStringUnsafe(p) -> request }
