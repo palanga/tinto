@@ -1,10 +1,63 @@
 package examples
 
-import web.{Endpoint, v2}
+import web.{Endpoint, v2, v4}
 import zhttp.http.CORSConfig
 import zio.ZIO
-import zio.console.putStrLn
+import zio.clock.Clock
+import zio.console.{Console, putStrLn}
 import zio.json.{DeriveJsonCodec, JsonCodec}
+
+object examplev4 extends zio.App:
+
+  import v4.*
+//  import v4.Param.*
+
+  object api:
+    val healthCheck: AnyUnitEndpoint               = v4.Endpoint.get("/healthcheck")
+    val healthCheckV2: AnyUnitEndpoint             = v4.Endpoint.get("/healthcheck/v2")
+    val echo: ParamsAnyUnitEndpoint[(String, Int)] = v4.Endpoint.get(Route.init / "echo" / StringParam / IntParam)
+//  val book        = v4.Endpoint.get("book").out[Book].withOutCodec
+
+//case class Book(name: String)
+//
+//given JsonCodec[Book] = DeriveJsonCodec.gen
+
+  object app:
+    import zio.duration.*
+    import zhttp.service.Server
+    import zhttp.http.Middleware.cors
+
+    //    List[zhttp.http.HttpApp[zio.console.Console & zio.clock.Clock, Throwable]]
+    val httpApp: zhttp.http.HttpApp[zio.console.Console & zio.clock.Clock, Throwable] = List(
+      api.healthCheck.resolveWith(_ => zio.console.putStrLn("ok")),
+      api.healthCheckV2.resolveWith(_ => zio.console.putStrLn("ok")),
+//      api.echo.resolveWith { case ((text, delay), _) => ZIO.unit.delay(delay.seconds) },
+      //    api.book.resolveWith(_ => ZIO succeed Book("Rayuela")),
+    ).map(server.v4.asZHTTP).reduce(_ ++ _)
+
+    def errorMapper(t: Throwable): zhttp.http.HttpError = t match {
+      case e: zhttp.http.HttpError => e
+      case e                       => zhttp.http.HttpError.InternalServerError(e.getMessage, Some(e.getCause))
+    }
+
+    val port      = 8080
+    val appServer = Server.port(port) ++ Server.app(httpApp @@ cors(CORSConfig(true)))
+
+  override def run(args: List[String]) =
+    app.appServer.make
+      .use(_ =>
+        //          putStrLn(docs)
+        //            *>
+        zio.console.putStrLn(s"Server started on port ${app.port}")
+        //            *> fetching
+          *> ZIO.never
+      )
+      .provideCustomLayer(
+        zhttp.service.server.ServerChannelFactory.auto
+          ++ zhttp.service.EventLoopGroup.auto(1)
+          ++ zhttp.service.ChannelFactory.auto
+      )
+      .exitCode
 
 object examplev2 extends zio.App:
 

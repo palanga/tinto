@@ -240,7 +240,7 @@ object v3 extends App:
 
 object v4 extends App:
 
-  import Param.*
+//  import Param.*
 
   val healthRoute: Route0              = Route.init / "health"
   val digitsRoute: Route1[String]      = Route.init / "echo" / StringParam
@@ -257,7 +257,7 @@ object v4 extends App:
   println(usersOrdersRoute)
   println(a)
 
-  sealed trait Route[-In]
+  sealed trait Route[PathParams]
 
   object Route:
     val init: Start.type = Start
@@ -285,92 +285,114 @@ object v4 extends App:
     def /(path: String): Route3[A, B, C] = copy(path = this.path + "/" + path)
     override def toString: String        = prefix.toString + "/" + param.toString + path
 
-  enum Param[A]:
-    case IntParam extends Param[Int]
-    case StringParam extends Param[String]
+  sealed trait Param[A]:
+    def fromStringUnsafe(input: String): A
+
+  case object IntParam extends Param[Int]:
+    override def fromStringUnsafe(input: String): Int = input.toInt
+
+  case object StringParam extends Param[String]:
+    override def fromStringUnsafe(input: String): String = input
 
   //    override def toString: String = this match {
   //      case IntParam    => "<<Int>>"
   //      case StringParam => "<<String>>"
   //    }
 
-  sealed trait ParamsEndpoint[PathParams, Ro <: Route[PathParams], In, Out]:
+  sealed trait ParamsEndpoint[PathParams, BodyIn, BodyOut]:
     val method: Method
-    val route: Ro
-    def resolveWith[R](f: ((PathParams, In)) => ZIO[R, Throwable, Out]) = ???
+    val route: Route[PathParams]
 
-  sealed trait Endpoint[In, Out]:
+    /**
+     * Resolve this endpoint with a ZIO
+     *
+     * @param f
+     *   a function that takes a tuple of path params and a request body and
+     *   returns a ZIO result
+     * @tparam R
+     *   the type of dependencies
+     * @return
+     *   an endpoint with resolver object
+     */
+    def resolveWith[R](
+      f: (PathParams, BodyIn) => ZIO[R, Throwable, BodyOut]
+    ): EndpointWithResolver[R, PathParams, BodyIn, BodyOut] = ParamsEndpointWithResolver(this, f)
+
+  sealed trait Endpoint[BodyIn, BodyOut]:
     val method: Method
     val route: Route0
 
+    /**
+     * Resolve this endpoint with a ZIO
+     *
+     * @param f
+     *   a function that takes and a request body and returns a ZIO result
+     * @tparam R
+     *   the type of dependencies
+     * @return
+     *   an endpoint with resolver object
+     */
+    def resolveWith[R](f: BodyIn => ZIO[R, Throwable, BodyOut]): EndpointWithResolver[R, Any, BodyIn, BodyOut] =
+      NoParamsEndpointWithResolver(this, f)
+
   sealed trait IncompleteEndpoint[In, Out]
-  sealed trait IncompleteParamsEndpoint[R <: Route[_], In, Out]
+  sealed trait IncompleteParamsEndpoint[P, In, Out]
 
   object Endpoint:
-    def get(route: String)                                          = AnyUnitEndpoint(Method.GET, Route.init / route)
-    def get(route: Route0)                                          = AnyUnitEndpoint(Method.GET, route)
-    def get[A](route: Route[A]): ParamsAnyUnitEndpoint[A, Route[A]] = ParamsAnyUnitEndpoint(Method.GET, route)
-  //    def post(route: String)      = AnyUnitEndpoint(Method.POST, route)
-  //    def post[A](route: Route[A]) = WithPathParams[A](Method.POST, route)
+    def get(route: String)                         = AnyUnitEndpoint(Method.GET, Route.init / route)
+    def get[PathParams](route: Route[PathParams])  = ParamsAnyUnitEndpoint(Method.GET, route)
+    def post(route: String)                        = AnyUnitEndpoint(Method.POST, Route.init / route)
+    def post[PathParams](route: Route[PathParams]) = ParamsAnyUnitEndpoint(Method.POST, route)
 
   case class AnyUnitEndpoint(method: Method, route: Route0) extends Endpoint[Any, Unit]:
-    def in[In]: InEndpoint[In] = InEndpoint[In](method, route)
-  //    def out[Out]: OutEndpoint[PathParams, Out] = OutEndpoint[PathParams, Out](method, route)
+    def in[In](using codec: JsonCodec[In]): InEndpoint[In]      = InEndpoint[In](method, route, codec)
+    def out[Out](using codec: JsonCodec[Out]): OutEndpoint[Out] = OutEndpoint[Out](method, route, codec)
 
-  case class InEndpoint[In](method: Method, route: Route0) extends IncompleteEndpoint[In, Unit]:
-    def withInCodec(using inCodec: JsonCodec[In]): InCodecEndpoint[In] =
-      InCodecEndpoint(method, route, inCodec)
+  case class InEndpoint[In](method: Method, route: Route0, inCodec: JsonCodec[In]) extends Endpoint[In, Unit]:
+    def out[Out](using codec: JsonCodec[Out]): InOutEndpoint[In, Out] =
+      InOutEndpoint[In, Out](method, route, inCodec, codec)
 
-    case class InCodecEndpoint[In](method: Method, route: Route0, inCodec: JsonCodec[In]) extends Endpoint[In, Unit]
-  //    def out[Out]: InCodecOutEndpoint[In, Out] = InCodecOutEndpoint[In, Out](method, route, inCodec)
-  //
+  case class OutEndpoint[Out](method: Method, route: Route0, outCodec: JsonCodec[Out]) extends Endpoint[Any, Out]:
+    def in[In](using codec: JsonCodec[In]): InOutEndpoint[In, Out] =
+      InOutEndpoint[In, Out](method, route, codec, outCodec)
 
-  case class ParamsAnyUnitEndpoint[P, R <: Route[P]](method: Method, route: R) extends ParamsEndpoint[P, R, Any, Unit]:
-    def in[In]: ParamsInEndpoint[P, R, In] = ParamsInEndpoint[P, R, In](method, route)
-  //    def out[Out] = InOutEndpoint[PathParams, In, Out](method, route)
+  case class InOutEndpoint[In, Out](method: Method, route: Route0, inCodec: JsonCodec[In], outCodec: JsonCodec[Out])
+      extends Endpoint[In, Out]
 
-  case class ParamsInEndpoint[P, R <: Route[P], In](method: Method, route: R)
-      extends IncompleteParamsEndpoint[R, In, Unit]:
-    def withInCodec(using inCodec: JsonCodec[In]): ParamsInCodecEndpoint[P, R, In] =
-      ParamsInCodecEndpoint(method, route, inCodec)
+  case class ParamsAnyUnitEndpoint[P](method: Method, route: Route[P]) extends ParamsEndpoint[P, Any, Unit]:
+    def in[In](using codec: JsonCodec[In]): ParamsInEndpoint[P, In] = ParamsInEndpoint[P, In](method, route, codec)
+    def out[Out](using codec: JsonCodec[Out]): ParamsOutEndpoint[P, Out] =
+      ParamsOutEndpoint[P, Out](method, route, codec)
 
-  case class ParamsInCodecEndpoint[P, R <: Route[P], In](method: Method, route: R, inCodec: JsonCodec[In])
-      extends ParamsEndpoint[P, R, In, Unit]
+  case class ParamsInEndpoint[P, In](method: Method, route: Route[P], inCodec: JsonCodec[In])
+      extends ParamsEndpoint[P, In, Unit]:
+    def out[Out](using codec: JsonCodec[Out]): ParamsInOutEndpoint[P, In, Out] =
+      ParamsInOutEndpoint[P, In, Out](method, route, inCodec, codec)
 
-  //  case class OutEndpoint[PathParams, Out](method: Method, route: Route[PathParams])
-  //      extends IncompleteEndpoint[PathPArams, Any, Out]:
-  //    def withOutCodec(using outCodec: JsonCodec[Out]): OutCodecEndpoint[Out] =
-  //      OutCodecEndpoint(method, route, outCodec)
-  //    def in[In]: InOutEndpoint[In, Out] = InOutEndpoint[In, Out](method, route)
-  //
-  //  case class InOutEndpoint[In, Out](method: Method, route: String) extends IncompleteEndpoint[In, Out]:
-  //    def withInCodec(using inCodec: JsonCodec[In]): InCodecOutEndpoint[In, Out] =
-  //      InCodecOutEndpoint(method, route, inCodec)
-  //    def withOutCodec(using outCodec: JsonCodec[Out]): InOutCodecEndpoint[In, Out] =
-  //      InOutCodecEndpoint(method, route, outCodec)
-  //
-  //  case class OutCodecEndpoint[Out](method: Method, route: String, outCodec: JsonCodec[Out]) extends Endpoint[Any, Out]:
-  //    def in[In]: InOutCodecEndpoint[In, Out] = InOutCodecEndpoint[In, Out](method, route, outCodec)
-  //
-  //  case class InCodecOutEndpoint[In, Out](method: Method, route: String, inCodec: JsonCodec[In])
-  //      extends IncompleteEndpoint[In, Out]:
-  //    def withOutCodec(using outCodec: JsonCodec[Out]): InOutCodecsEndpoint[In, Out] =
-  //      InOutCodecsEndpoint(method, route, inCodec, outCodec)
-  //
-  //  case class InOutCodecEndpoint[In, Out](method: Method, route: String, outCodec: JsonCodec[Out])
-  //      extends IncompleteEndpoint[In, Out]:
-  //    def withInCodec(using inCodec: JsonCodec[In]): InOutCodecsEndpoint[In, Out] =
-  //      InOutCodecsEndpoint(method, route, inCodec, outCodec)
-  //
-  //  case class InOutCodecsEndpoint[In, Out](
-  //    method: Method,
-  //    route: String,
-  //    inCodec: JsonCodec[In],
-  //    outCodec: JsonCodec[Out],
-  //  ) extends Endpoint[In, Out]
-  //
-  //  case class EndpointWithResolver[-R, In, Out](endpoint: Endpoint[In, Out], resolver: In => ZIO[R, Throwable, Out])
+  case class ParamsOutEndpoint[P, Out](method: Method, route: Route[P], outCodec: JsonCodec[Out])
+      extends ParamsEndpoint[P, Any, Out]:
+    def in[In](using codec: JsonCodec[In]): ParamsInOutEndpoint[P, In, Out] =
+      ParamsInOutEndpoint[P, In, Out](method, route, codec, outCodec)
+
+  case class ParamsInOutEndpoint[P, In, Out](
+    method: Method,
+    route: Route[P],
+    inCodec: JsonCodec[In],
+    outCodec: JsonCodec[Out],
+  ) extends ParamsEndpoint[P, In, Out]
+
+  sealed trait EndpointWithResolver[-R, PathParams, BodyIn, BodyOut]
+
+  case class ParamsEndpointWithResolver[-R, P, In, Out](
+    endpoint: ParamsEndpoint[P, In, Out],
+    resolver: (P, In) => ZIO[R, Throwable, Out],
+  ) extends EndpointWithResolver[R, P, In, Out]
+
+  case class NoParamsEndpointWithResolver[-R, In, Out](
+    endpoint: Endpoint[In, Out],
+    resolver: In => ZIO[R, Throwable, Out],
+  ) extends EndpointWithResolver[R, Any, In, Out]
 
   object example:
-    val echo: ParamsAnyUnitEndpoint[(String, Int), Route[(String, Int)]] =
+    val echo =
       Endpoint.get(Route.init / "echo" / StringParam / IntParam)
