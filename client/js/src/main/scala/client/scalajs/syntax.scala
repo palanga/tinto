@@ -2,7 +2,6 @@ package client.scalajs
 
 import sttp.capabilities
 import sttp.client3.*
-import sttp.model.Method.isIdempotent
 import sttp.model.{Method, Uri}
 import web.v4.InOutEndpoint
 import zio.json.JsonEncoder
@@ -13,7 +12,20 @@ import scala.concurrent.Future
 object client:
   import web.v4.*
 
-  def fetch[In, Out](endpoint: Endpoint[In, Out])(input: In): ZIO[Any, Throwable, Out] =
+  def fetch[PathParams, BodyIn, BodyOut](endpoint: ParamsEndpoint[PathParams, BodyIn, BodyOut])(
+    input: (PathParams, BodyIn)
+  ): ZIO[Any, Throwable, BodyOut] =
+    val path        = buildPath(endpoint.route, input._1)
+    val uri         = Uri.parse(s"http://localhost:8080/$path").left.map(new Exception(_))
+    val method      = convert(endpoint.method)
+    val requestBody = encodeRequestBodyP(endpoint, input._2)
+    ZIO
+      .fromEither(uri)
+      .flatMap(makeRequest(method, requestBody))
+      .map(decodeResponseBodyP(endpoint))
+      .absolve
+
+  def fetch[BodyIn, BodyOut](endpoint: Endpoint[BodyIn, BodyOut])(input: BodyIn): ZIO[Any, Throwable, BodyOut] =
     val uri         = Uri.parse(s"http://localhost:8080/${endpoint.route.path}").left.map(new Exception(_))
     val method      = convert(endpoint.method)
     val requestBody = encodeRequestBody(endpoint, input)
@@ -23,18 +35,41 @@ object client:
       .map(decodeResponseBody(endpoint))
       .absolve
 
+  private def buildPath[P](route: Route[P], pathParams: Any): String =
+    (route, pathParams) match {
+      case Route0(path) -> ()                   => path
+      case Route1(prefix, _, path) -> a         => buildPath(prefix, ()) + a.toString + path
+      case Route2(prefix, _, path) -> (a, b)    => buildPath(prefix, a) + b.toString + path
+      case Route3(prefix, _, path) -> (a, b, c) => buildPath(prefix, (a, b)) + c.toString + path
+      case _                                    => ""
+    }
+
   private def encodeRequestBody[In](endpoint: Endpoint[In, _], input: In): String = endpoint match {
     case AnyUnitEndpoint(_, _) | OutEndpoint(_, _, _) => ""
     case InEndpoint(_, _, inCodec)                    => inCodec.encodeJson(input, None).toString
     case InOutEndpoint(_, _, inCodec, _)              => inCodec.encodeJson(input, None).toString
   }
 
-  private def decodeResponseBody[In, Out](endpoint: Endpoint[In, Out])(
+  private def encodeRequestBodyP[In](endpoint: ParamsEndpoint[_, In, _], input: In): String = endpoint match {
+    case ParamsAnyUnitEndpoint(_, _) | ParamsOutEndpoint(_, _, _) => ""
+    case ParamsInEndpoint(_, _, inCodec)                          => inCodec.encodeJson(input, None).toString
+    case ParamsInOutEndpoint(_, _, inCodec, _)                    => inCodec.encodeJson(input, None).toString
+  }
+
+  private def decodeResponseBody[Out](endpoint: Endpoint[_, Out])(
     response: Response[Either[String, String]]
   ): Either[Exception, Out] = endpoint match {
     case AnyUnitEndpoint(_, _) | InEndpoint(_, _, _) => Right(())
     case OutEndpoint(_, _, outCodec)                 => response.body.flatMap(outCodec.decodeJson).left.map(Exception(_))
     case InOutEndpoint(_, _, _, outCodec)            => response.body.flatMap(outCodec.decodeJson).left.map(Exception(_))
+  }
+
+  private def decodeResponseBodyP[Out](endpoint: ParamsEndpoint[_, _, Out])(
+    response: Response[Either[String, String]]
+  ): Either[Exception, Out] = endpoint match {
+    case ParamsAnyUnitEndpoint(_, _) | ParamsInEndpoint(_, _, _) => Right(())
+    case ParamsOutEndpoint(_, _, outCodec)                       => response.body.flatMap(outCodec.decodeJson).left.map(Exception(_))
+    case ParamsInOutEndpoint(_, _, _, outCodec)                  => response.body.flatMap(outCodec.decodeJson).left.map(Exception(_))
   }
 
   private def makeRequest(method: Method, body: String)(
@@ -48,31 +83,6 @@ object client:
           sttp.client3.basicRequest.method(method, uri).body(body).send(backend)
       }
     )
-
-  private def makeBackend: ZManaged[Any, Nothing, SttpBackend[Future, capabilities.WebSockets]] =
-    ZIO.succeed(FetchBackend()).toManaged(backend => ZIO.fromFuture(_ => backend.close()).ignore)
-
-  private def convert(method: web.Method) = method match {
-    case web.Method.GET  => sttp.model.Method.GET
-    case web.Method.POST => sttp.model.Method.POST
-  }
-
-object syntax:
-
-  extension [In, Out](self: InOutEndpoint[In, Out])
-    // TODO cambiar la implementacion en futuro a una de cats effects porque futuro no se puede cancelar bien
-    def fetch(input: In): ZIO[Any, Throwable, Out] =
-      (for {
-        uri <- ZIO fromEither Uri.parse(s"http://localhost:8080/${self.route}").left.map(new Exception(_))
-        response <- makeBackend.use(backend =>
-                      ZIO fromFuture { _ =>
-                        sttp.client3.basicRequest
-                          .method(convert(self.method), uri)
-                          .body(self.inCodec.encoder.encodeJson(input, None).toString)
-                          .send(backend)
-                      }
-                    )
-      } yield response.body.flatMap(self.outCodec.decoder.decodeJson).left.map(new Exception(_))).absolve
 
   private def makeBackend: ZManaged[Any, Nothing, SttpBackend[Future, capabilities.WebSockets]] =
     ZIO.succeed(FetchBackend()).toManaged(backend => ZIO.fromFuture(_ => backend.close()).ignore)
