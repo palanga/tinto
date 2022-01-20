@@ -3,7 +3,7 @@ package client.scalajs
 import sttp.capabilities
 import sttp.client3.*
 import sttp.model.Uri
-import web.Endpoint
+import web.v4.InOutEndpoint
 import zio.json.JsonEncoder
 import zio.{ZIO, ZManaged}
 
@@ -11,7 +11,7 @@ import scala.concurrent.Future
 
 object syntax:
 
-  extension [In, Out](self: Endpoint[In, Out])
+  extension [In, Out](self: InOutEndpoint[In, Out])
     // TODO cambiar la implementacion en futuro a una de cats effects porque futuro no se puede cancelar bien
     def fetch(input: In): ZIO[Any, Throwable, Out] =
       (for {

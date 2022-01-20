@@ -1,13 +1,13 @@
 package client
 
-import web.Endpoint
+import web.v4.InOutEndpoint
 import zhttp.http.{HTTP_CHARSET, Headers, HttpData, URL}
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
 import zio.ZIO
 
 object syntax:
 
-  extension [In, Out](self: Endpoint[In, Out])
+  extension [In, Out](self: InOutEndpoint[In, Out])
     def fetch(input: In): ZIO[EventLoopGroup & ChannelFactory, Throwable, Out] =
       ZIO
         .fromEither(URL.fromString("http://localhost:8080/" + self.route))

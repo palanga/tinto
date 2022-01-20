@@ -8,7 +8,7 @@ import zio.{Runtime, ZEnv}
 object Main:
 
   private val nubeVar      = Var("nube var vacia")
-  private val echoEndpoint = web.Endpoint.post("echo").resolveWith((in: String) => zio.ZIO.succeed(in))
+  private val echoEndpoint = web.Endpoint.post("echo").in[String].out[String]
 
   implicit val runtime: Runtime[ZEnv] = Runtime.default
 
