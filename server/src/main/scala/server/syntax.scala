@@ -98,3 +98,5 @@ object v4:
       case Route3(prefix, param, path) =>
         ???
     }
+
+//  private def decodeURL(input: String): Either

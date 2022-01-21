@@ -195,3 +195,38 @@ object v4:
 
   trait HasDocs:
     def docs: String
+
+object v5:
+  // TODO usar match types ?
+
+  sealed trait Path[Head, +Tail]:
+    def /(name: String): Path[Any, Path[Head, Tail]]             = Name(name, this)
+    def /[P](paramType: ParamType[P]): Path[P, Path[Head, Tail]] = Param[P, Path[Head, Tail]](paramType, this)
+
+    def toList: List[String | ParamType[_]] = (this match {
+      case Nil                    => List.empty
+      case Name(name, tail)       => name :: tail.toList
+      case Param(paramType, tail) => paramType :: tail.toList
+    }).reverse
+
+  object Path:
+    val init: Nil.type = Nil
+
+  case object Nil extends Path[Nothing, Nothing]:
+    override def /(name: String): Path[Any, Nil.type]             = Name(name, Nil)
+    override def /[P](paramType: ParamType[P]): Path[P, Nil.type] = Param[P, Nil.type](paramType, Nil)
+
+  case class Name[B <: Path[_, _]](name: String, tail: B) extends Path[Any, B]
+
+  case class Param[A, B <: Path[_, _]](paramType: ParamType[A], tail: B) extends Path[A, B]
+
+  enum ParamType[A]:
+    case StringParam extends ParamType[String]
+    case IntParam extends ParamType[Int]
+
+  import ParamType.*
+
+  val r1: Nil.type                                     = Path.init
+  val r2: Path[Any, Nil.type]                          = Path.init / "echo"
+  val r3: Path[String, Path[Any, Nil.type]]            = Path.init / "echo" / StringParam
+  val r4: Path[Int, Path[String, Path[Any, Nil.type]]] = Path.init / "echo" / StringParam / IntParam
