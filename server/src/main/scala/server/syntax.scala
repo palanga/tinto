@@ -31,7 +31,7 @@ object v4:
   def asZHTTP[R](errorMapper: Throwable => HttpError)(endpoint: EndpointWithResolver[R, _, _, _]): HttpApp[R, Nothing] =
     asZHTTP(endpoint).mapError(errorMapper).catchAll(Http.error)
 
-  private def extractBody[In](request: Request, endpoint: Endpoint[In, _]): ZIO[Any, Throwable, In] =
+  private def extractBody[In](request: Request, endpoint: NoParamsEndpoint[In, _]): ZIO[Any, Throwable, In] =
     endpoint match {
       case AnyUnitEndpoint(_, _) | OutEndpoint(_, _, _) => zio.ZIO.unit
       case InEndpoint(_, _, inCodec)                    => decodeBody(request, inCodec)
@@ -45,7 +45,7 @@ object v4:
       case ParamsInOutEndpoint(_, _, inCodec, _)                    => decodeBody(request, inCodec)
     }
 
-  private def encodeOut[Out](endpoint: Endpoint[_, Out])(out: Out): Response =
+  private def encodeOut[Out](endpoint: NoParamsEndpoint[_, Out])(out: Out): Response =
     endpoint match {
       case AnyUnitEndpoint(_, _) | InEndpoint(_, _, _) => Response(Status.NO_CONTENT)
       case OutEndpoint(_, _, outCodec)                 => encodeBody(out, outCodec)

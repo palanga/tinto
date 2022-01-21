@@ -12,8 +12,8 @@ object examplev4 extends zio.App:
   import v4.*
 
   object api:
-    val healthCheck: AnyUnitEndpoint   = Endpoint.get("/healthcheck")
-    val healthCheckV2: AnyUnitEndpoint = Endpoint.get("/healthcheck/v2")
+    val healthCheck: AnyUnitEndpoint   = Endpoint.get("healthcheck")
+    val healthCheckV2: AnyUnitEndpoint = Endpoint.get("healthcheck/v2")
 //    val echo: ParamsAnyUnitEndpoint[(String, Int)] = Endpoint.get(Route.init / "echo" / StringParam / IntParam)
     val echoa: ParamsOutEndpoint[String, String] = Endpoint.get(Route.init / "echo" / StringParam).out[String]
 //  val book        = v4.Endpoint.get("book").out[Book]
@@ -29,8 +29,8 @@ object examplev4 extends zio.App:
 
     //    List[zhttp.http.HttpApp[zio.console.Console & zio.clock.Clock, Throwable]]
     val httpApp: zhttp.http.HttpApp[zio.console.Console & zio.clock.Clock, Throwable] = List(
-      api.healthCheck.resolveWith(_ => zio.console.putStrLn("ok")),
-      api.healthCheckV2.resolveWith(_ => zio.console.putStrLn("ok")),
+      api.healthCheck.resolveWith(_ => putStrLn("ok")),
+      api.healthCheckV2.resolveWith(_ => putStrLn("ok")),
 //      api.echo.resolveWith { case ((text, delay), _) => ZIO.unit.delay(delay.seconds) },
       api.echoa.resolveWith { case (text, _) => ZIO.succeed(text) },
       //    api.book.resolveWith(_ => ZIO succeed Book("Rayuela")),
@@ -43,12 +43,18 @@ object examplev4 extends zio.App:
     val port      = 8080
     val appServer = Server.port(port) ++ Server.app(httpApp @@ cors(CORSConfig(true)))
 
+  val docs = List(
+    api.healthCheckV2,
+    api.echoa,
+    api.healthCheck,
+  ).sortBy(_.route.toString).map(_.docs).mkString("\n")
+
   override def run(args: List[String]) =
     app.appServer.make
       .use(_ =>
-        //          putStrLn(docs)
-        //            *>
-        zio.console.putStrLn(s"Server started on port ${app.port}")
+        putStrLn(docs)
+        *>
+        putStrLn(s"Server started on port ${app.port}")
         //            *> fetching
           *> ZIO.never
       )

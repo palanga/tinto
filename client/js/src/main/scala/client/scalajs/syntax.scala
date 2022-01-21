@@ -25,7 +25,7 @@ object client:
       .map(decodeResponseBodyP(endpoint))
       .absolve
 
-  def fetch[BodyIn, BodyOut](endpoint: Endpoint[BodyIn, BodyOut])(input: BodyIn): ZIO[Any, Throwable, BodyOut] =
+  def fetch[BodyIn, BodyOut](endpoint: NoParamsEndpoint[BodyIn, BodyOut])(input: BodyIn): ZIO[Any, Throwable, BodyOut] =
     val uri         = Uri.parse(s"http://localhost:8080${endpoint.route.path}").left.map(new Exception(_))
     val method      = convert(endpoint.method)
     val requestBody = encodeRequestBody(endpoint, input)
@@ -44,7 +44,7 @@ object client:
       case _                                    => ""
     }
 
-  private def encodeRequestBody[In](endpoint: Endpoint[In, _], input: In): String = endpoint match {
+  private def encodeRequestBody[In](endpoint: NoParamsEndpoint[In, _], input: In): String = endpoint match {
     case AnyUnitEndpoint(_, _) | OutEndpoint(_, _, _) => ""
     case InEndpoint(_, _, inCodec)                    => inCodec.encodeJson(input, None).toString
     case InOutEndpoint(_, _, inCodec, _)              => inCodec.encodeJson(input, None).toString
@@ -56,7 +56,7 @@ object client:
     case ParamsInOutEndpoint(_, _, inCodec, _)                    => inCodec.encodeJson(input, None).toString
   }
 
-  private def decodeResponseBody[Out](endpoint: Endpoint[_, Out])(
+  private def decodeResponseBody[Out](endpoint: NoParamsEndpoint[_, Out])(
     response: Response[Either[String, String]]
   ): Either[Exception, Out] = endpoint match {
     case AnyUnitEndpoint(_, _) | InEndpoint(_, _, _) => Right(())
