@@ -1,6 +1,7 @@
 package server
 
-import web.*
+import endpoints.*
+import endpoints.Route.*
 import zhttp.*
 import zhttp.http.*
 import zio.ZIO
@@ -10,7 +11,7 @@ import java.net.URLDecoder
 
 object v4:
 
-  import web.v4.*
+  import endpoints.*
 
   def asZHTTP[R](endpointWithResolver: EndpointWithResolver[R, _, _, _]): HttpApp[R, Throwable] =
     endpointWithResolver match {
@@ -65,13 +66,13 @@ object v4:
   private def encodeBody[Out](out: Out, outCodec: JsonCodec[Out]): Response =
     Response.json(outCodec.encoder.encodeJson(out, None).toString)
 
-  private def convertMethod(method: web.Method) = method match {
-    case web.Method.GET  => zhttp.http.Method.GET
-    case web.Method.POST => zhttp.http.Method.POST
+  private def convertMethod(method: endpoints.Method) = method match {
+    case endpoints.Method.GET  => zhttp.http.Method.GET
+    case endpoints.Method.POST => zhttp.http.Method.POST
   }
 
   private def extractParams[PathParams](
-    method: web.Method,
+    method: endpoints.Method,
     route: Route[PathParams],
   ): Http[Any, Nothing, Request, (PathParams, Request)] =
     val zMethod: zhttp.http.Method = convertMethod(method)

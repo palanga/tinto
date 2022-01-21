@@ -7,7 +7,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "tinto"
   )
-  .aggregate(core, web, server, client, client_scalajs, mira, frontend)
+  .aggregate(core, endpoints, server, client, client_scalajs, mira, frontend)
 
 lazy val core = (project in file("core"))
   .enablePlugins(ScalaJSPlugin)
@@ -38,10 +38,10 @@ lazy val core = (project in file("core"))
 //   )
 //   .dependsOn(core)
 
-lazy val web = (project in file("web"))
+lazy val endpoints = (project in file("endpoints"))
   .enablePlugins(ScalaJSPlugin)
   .settings(
-    name := "web",
+    name := "endpoints",
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % "1.0.13",
       "dev.zio" %% "zio-test"     % "1.0.13" % "test",
@@ -63,7 +63,7 @@ lazy val server = (project in file("server"))
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
   )
-  .dependsOn(web)
+  .dependsOn(endpoints)
 
 lazy val client = (project in file("client/jvm"))
   .settings(
@@ -77,7 +77,7 @@ lazy val client = (project in file("client/jvm"))
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
   )
-  .dependsOn(web)
+  .dependsOn(endpoints)
 
 lazy val client_scalajs = (project in file("client/js"))
   .enablePlugins(ScalaJSPlugin)
@@ -92,7 +92,7 @@ lazy val client_scalajs = (project in file("client/js"))
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
   )
-  .dependsOn(web)
+  .dependsOn(endpoints)
 
 lazy val price    = ProjectRef(uri("https://github.com/palanga/aconcagua.git#v1.1.1"), "price")
 lazy val std_list = ProjectRef(uri("https://github.com/palanga/aconcagua.git#v1.1.1"), "std_list")
@@ -110,7 +110,7 @@ lazy val frontend = (project in file("frontend"))
     scalaJSLinkerConfig ~= { _.withSourceMap(false) },
     scalaJSUseMainModuleInitializer := true,
   )
-  .dependsOn(core, mira, web, client_scalajs)
+  .dependsOn(core, mira, endpoints, client_scalajs)
 
 lazy val mira = (project in file("mira"))
   .enablePlugins(ScalaJSPlugin)
@@ -135,4 +135,4 @@ lazy val examples = (project in file("examples"))
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
   )
-  .dependsOn(web, server, client)
+  .dependsOn(endpoints, server, client)

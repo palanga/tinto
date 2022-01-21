@@ -6,14 +6,14 @@ import mira.*
 import zio.console.putStrLn
 import zio.{Runtime, ZEnv}
 import client.scalajs.client.fetch
-import web.v4.{IntParam, Route, StringParam}
+import endpoints.*
 
 object Main:
 
   private val nubeVar      = Var("nube var vacia")
-  private val echoEndpoint = web.Endpoint.get(Route.init / "echo" / StringParam).out[String]
+  private val echoEndpoint = endpoints.Endpoint.get(Route.init / "echo" / StringParam).out[String]
 
-  val a      = web.Endpoint.get(Route.init / "users" / StringParam / "posts" / IntParam / StringParam)
+  val a      = endpoints.Endpoint.get(Route.init / "users" / StringParam / "posts" / IntParam / StringParam)
   val fetchA = fetch(a)
 
   private val echo = fetch(echoEndpoint)
@@ -37,8 +37,8 @@ object Main:
     renderOnDomContentLoaded(
       org.scalajs.dom.document.querySelector("#app"),
       div(
-        fetchZIO.build,
+        fetchZIO.build
 //        fetchNoZIO.build,
-        example.root.build,
+//        example.root.build,
       ),
     )

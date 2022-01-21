@@ -1,6 +1,6 @@
 package client
 
-import web.v4.InOutEndpoint
+import endpoints.*
 import zhttp.http.{HTTP_CHARSET, Headers, HttpData, URL}
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
 import zio.ZIO
@@ -24,7 +24,7 @@ object syntax:
         HttpData.fromString(self.inCodec.encoder.encodeJson(input, None).toString, HTTP_CHARSET),
       )
 
-  private def convert(method: web.Method) = method match {
-    case web.Method.GET  => zhttp.http.Method.GET
-    case web.Method.POST => zhttp.http.Method.POST
+  private def convert(method: endpoints.Method) = method match {
+    case endpoints.Method.GET  => zhttp.http.Method.GET
+    case endpoints.Method.POST => zhttp.http.Method.POST
   }

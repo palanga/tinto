@@ -1,6 +1,6 @@
 package examples
 
-import web.{Endpoint, v4}
+import endpoints.*
 import zhttp.http.CORSConfig
 import zio.ZIO
 import zio.clock.Clock
@@ -8,8 +8,6 @@ import zio.console.{Console, putStrLn}
 import zio.json.{DeriveJsonCodec, JsonCodec}
 
 object examplev4 extends zio.App:
-
-  import v4.*
 
   object api:
     val healthCheck: AnyUnitEndpoint   = Endpoint.get("healthcheck")

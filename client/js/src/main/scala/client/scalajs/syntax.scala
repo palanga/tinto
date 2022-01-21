@@ -3,14 +3,14 @@ package client.scalajs
 import sttp.capabilities
 import sttp.client3.*
 import sttp.model.{Method, Uri}
-import web.v4.InOutEndpoint
+import endpoints.*
+import endpoints.Route.*
 import zio.json.JsonEncoder
 import zio.{IO, ZIO, ZManaged}
 
 import scala.concurrent.Future
 
 object client:
-  import web.v4.*
 
   def fetch[PathParams, BodyIn, BodyOut](endpoint: ParamsEndpoint[PathParams, BodyIn, BodyOut])(
     input: (PathParams, BodyIn)
@@ -87,7 +87,7 @@ object client:
   private def makeBackend: ZManaged[Any, Nothing, SttpBackend[Future, capabilities.WebSockets]] =
     ZIO.succeed(FetchBackend()).toManaged(backend => ZIO.fromFuture(_ => backend.close()).ignore)
 
-  private def convert(method: web.Method) = method match {
-    case web.Method.GET  => sttp.model.Method.GET
-    case web.Method.POST => sttp.model.Method.POST
+  private def convert(method: endpoints.Method) = method match {
+    case endpoints.Method.GET  => sttp.model.Method.GET
+    case endpoints.Method.POST => sttp.model.Method.POST
   }
