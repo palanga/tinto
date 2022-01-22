@@ -12,8 +12,8 @@ import scala.language.postfixOps
 
 sealed trait Shape[-R](attributes: List[Attribute[R]]):
 
-  def showWhen(condition: Signal[Boolean]): Edge[R]
-  def hideWhen(condition: Signal[Boolean]): Edge[R] = showWhen(condition.map(!_))
+  def showWhen(condition: => Signal[Boolean]): Edge[R]
+  def hideWhen(condition: => Signal[Boolean]): Edge[R] = showWhen(condition.map(!_))
 
   /**
    * Create a new Shape containing this and that Shapes
@@ -26,25 +26,25 @@ sealed trait Shape[-R](attributes: List[Attribute[R]]):
 
 object Shape:
 
-  val empty: Node[Any]                                     = Node("")
-  val input: Node[Any]                                     = Node("", kind = "input")
-  def text(text: String): Node[Any]                        = Node(text)
-  def text(text: AnyVal): Node[Any]                        = Node(text.toString)
-  def text(textSignal: Signal[String | AnyVal]): Node[Any] = empty.bind(textSignal)
-  def list[R](shapes: Signal[List[Shape[R]]]): Node[R]     = empty.bindAll(shapes)
-  def list[R](shape: Shape[R], shapes: Shape[R]*): Edge[R] = Edge(shapes.prepended(shape))
+  val empty: Node[Any]                                        = Node("")
+  val input: Node[Any]                                        = Node("", kind = "input")
+  def text(text: String): Node[Any]                           = Node(text)
+  def text(text: AnyVal): Node[Any]                           = Node(text.toString)
+  def text(textSignal: => Signal[String | AnyVal]): Node[Any] = empty.bind(textSignal)
+  def list[R](shapes: => Signal[Iterable[Shape[R]]]): Node[R] = empty.bindAll(shapes)
+  def list[R](shape: Shape[R], shapes: Shape[R]*): Edge[R]    = Edge(shapes.prepended(shape))
 
-  def when(condition: Signal[Boolean]): When = When(condition)
+  def when(condition: => Signal[Boolean]): When = When(condition)
 
   /**
    * Alias for [[Shape.text]]
    */
-  def fromTextSignal(textSignal: Signal[String | AnyVal]): Node[Any] = Shape.text(textSignal)
+  def fromTextSignal(textSignal: => Signal[String | AnyVal]): Node[Any] = Shape.text(textSignal)
 
   /**
    * Alias for [[Shape.list]]
    */
-  def fromShapesSignal[R](shapesSignal: Signal[List[Shape[R]]]): Node[R] = Shape.list(shapesSignal)
+  def fromShapesSignal[R](shapesSignal: => Signal[Iterable[Shape[R]]]): Node[R] = Shape.list(shapesSignal)
 
   case class Node[-R](
     private val text: String,
@@ -54,7 +54,8 @@ object Shape:
 
     def bind(signal: Signal[String | AnyVal]): Node[R] = this.addAttribute(Attribute.BindSignal(signal.map(_.toString)))
 
-    def bindAll[R1](signal: Signal[Seq[Shape[R1]]]): Node[R & R1] = this.addAttribute(Attribute.BindSignals(signal))
+    def bindAll[R1](signal: Signal[Iterable[Shape[R1]]]): Node[R & R1] =
+      this.addAttribute(Attribute.BindSignals(signal))
 
     def placeholder(text: String): Node[R] = this.addAttribute(Attribute.Placeholder(text))
 
@@ -79,7 +80,7 @@ object Shape:
 //      val a: KeyCode => UIO[Unit] = ZIO succeed f(_)
       onKeyPress(ZIO succeed f(_))
 
-    override def showWhen(condition: Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
+    override def showWhen(condition: => Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
 
     override def build(using runtime: Runtime[R]): LaminarElem =
       val laminarMods = attributes.map(toLaminarMod(this))
@@ -111,12 +112,20 @@ object Shape:
      */
     def ::[R1](node: Node[R1]): Edge[R & R1] = this.prependChild(node)
 
-    override def showWhen(condition: Signal[Boolean]): Edge[R] = this.copy(conditionalShow = Some(condition))
+    override def showWhen(condition: => Signal[Boolean]): Edge[R] = this.copy(conditionalShow = Some(condition))
 
     override def build(using runtime: Runtime[R]): LaminarElem =
-      val childNode = L.div(children.map(_.build), attributes.map(toLaminarMod(this)))
-      conditionalShow.fold(childNode)(shouldDisplay =>
-        L.div(L.child.maybe <-- shouldDisplay.map(Option.when(_)(childNode)))
+      conditionalShow.fold(L.div(children.map(_.build), attributes.map(toLaminarMod(this))))(shouldDisplay =>
+        L.div(
+          L.child.maybe <-- shouldDisplay
+            .map(
+              Option.when(_)(L.div(children.map(_.build), attributes.map(toLaminarMod(this))))
+            )
+            .observe(L.unsafeWindowOwner)
+//          L.onMountBind()
+//          L.unsafeWindowOwner
+
+        )
       )
 
     override def addAttribute[R1](attribute: Attribute[R1]): Edge[R & R1] =

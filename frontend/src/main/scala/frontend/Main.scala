@@ -10,37 +10,56 @@ import endpoints.*
 
 object Main:
 
-//  private val nubeVar      = Var("nube var vacia")
-//  private val echoEndpoint = endpoints.Endpoint.get(Route.init / "echo" / StringParam).out[String]
-//
-//  val a      = endpoints.Endpoint.get(Route.init / "users" / StringParam / "posts" / IntParam / StringParam)
-//  val fetchA = fetch(a)
-//
-//  private val echo = fetch(echoEndpoint)
-//
   implicit val runtime: Runtime[ZEnv] = Runtime.default
-//
-//  private val fetchZIO =
-//    import zio.duration.*
-//    Shape
-//      .text(nubeVar.signal)
-//      .onClick(echo("hola nuvolina", ()).tap(putStrLn(_)).delay(1.second).map(nubeVar.set).ignore)
-////      .onClick(fetchA(("hola", 13, "nuvolina"), ()).ignore)
-//
-////  private val fetchNoZIO =
-////    import client.scalajs.syntax.fetch
-////    Shape
-////      .text(nubeVar.signal)
-////      .onClick(runtime unsafeRunAsync_ echoEndpoint.fetch("hola nuvolina no zio").map(nubeVar.set))
 
-  val root = ArticleForm.view ++ Catalog.view
+  val addArticlePage = ArticleForm.view ++ Catalog.view
+  val placeOrderPage = order.form.OrderForm.view
+
+  val root =
+    Navigation.view
+      ++ addArticlePage.showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.Catalog))
+      ++ placeOrderPage.showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.PlaceOrder))
+
+  import com.raquo.laminar.api.L
+
+  val a =
+    L.div(
+      L.child.maybe <-- Navigation.currentPage.signal
+        .map(_ == Navigation.Page.Catalog)
+        .map(Option.when(_)(renderCatalog())),
+      L.child.maybe <-- Navigation.currentPage.signal
+        .map(_ == Navigation.Page.PlaceOrder)
+        .map(Option.when(_)(renderCatalog2())),
+    )
+
+  def renderCatalog() =
+    L.div(
+      L.children <-- Catalog.catalog.signal.map(_.values.map(renderArticle).toSeq)
+    )
+
+  def renderArticle(article: core.Article) =
+    L.div(
+      article.title.self
+    )
+
+  def renderCatalog2() =
+    L.div(
+      L.children <-- Catalog.catalog.signal.map(_.values.map(renderArticle2).toSeq)
+    )
+
+  def renderArticle2(article: core.Article) =
+    L.div(
+      article.title.self,
+      article.price.toString,
+    )
 
   def main(args: Array[String]): Unit =
     runtime unsafeRunAsync_ Catalog.loadCatalog()
     renderOnDomContentLoaded(
       org.scalajs.dom.document.querySelector("#app"),
       div(
-        root.build
+        root.build,
+        a,
 //        fetchNoZIO.build,
 //        example.root.build,
       ),
