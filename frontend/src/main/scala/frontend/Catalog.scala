@@ -20,5 +20,5 @@ object Catalog:
 
   private def renderArticle(article: Article) = article match {
     case Article(title, subtitle, price) =>
-      Shape.text(title.self) ++ Shape.text(subtitle) ++ Shape.text(price.toString)
+      Shape.text(title.self) +: (Shape.text(subtitle) ++ Shape.text(price.toString))
   }

@@ -32,7 +32,7 @@ object Shape:
   def text(text: AnyVal): Node[Any]                           = Node(text.toString)
   def text(textSignal: => Signal[String | AnyVal]): Node[Any] = empty.bind(textSignal)
   def list[R](shapes: => Signal[Iterable[Shape[R]]]): Node[R] = empty.bindAll(shapes)
-//  def list[R](shape: Shape[R], shapes: Shape[R]*): Edge[R]    = Edge(shapes.prepended(shape))
+  def list[R](shape: Shape[R], shapes: Shape[R]*): Edge[R]    = Edge(shapes.prepended(shape))
 
   def when(condition: => Signal[Boolean]): When = When(condition)
 

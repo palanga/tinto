@@ -15,10 +15,12 @@ object ArticleForm:
   private val price    = Var("")
 
   val view =
-    Shape.fromTextSignal(title.signal).onInput_(title.set).placeholder("Radix")
-      ++ Shape.fromTextSignal(subtitle.signal).onInput_(subtitle.set).placeholder("malbec")
-      ++ Shape.fromTextSignal(price.signal).onInput_(price.set).placeholder("800")
-      ++ Shape.text("AGREGAR").onClick(addArticle().map(Catalog.addArticle).orDie)
+    Shape.list(
+      Shape.fromTextSignal(title.signal).onInput_(title.set).placeholder("Radix"),
+      Shape.fromTextSignal(subtitle.signal).onInput_(subtitle.set).placeholder("malbec"),
+      Shape.fromTextSignal(price.signal).onInput_(price.set).placeholder("800"),
+      Shape.text("AGREGAR").onClick(addArticle().map(Catalog.addArticle).orDie),
+    )
 
   private def addArticle() =
     ZIO

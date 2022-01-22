@@ -33,7 +33,9 @@ object OrderForm:
       .onClick(placeOrder())
       .showWhen(currentStep.signal.map(_ == Step.ReviewOrder))
 
-  val view = prevStep ++ nextStep ++ send ++ SelectArticles.view ++ CustomerInfo.view ++ ReviewOrder.view
+  val view =
+    Shape.list(prevStep, nextStep, send)
+      ++ Shape.list(SelectArticles.view, CustomerInfo.view, ReviewOrder.view)
 
   private def placeOrder() =
 //    for {
@@ -54,12 +56,14 @@ object OrderForm:
     private def renderArticle(id: UUID, article: Article) =
       article match {
         case Article(title, subtitle, price) =>
-          Shape.text(title.self)
-            ++ Shape.text(subtitle)
-            ++ Shape.text(price.toString)
-            ++ Shape.text("+").onClick_(countById.update(_.updatedWith(id)(incrementOrCreate)))
-            ++ Shape.text(countById.signal.map(_.getOrElse(id, 0)))
-            ++ Shape.text("-").onClick_(countById.update(_.updatedWith(id)(decrementOrRemove)))
+          Shape.list(
+            Shape.text(title.self),
+            Shape.text(subtitle),
+            Shape.text(price.toString),
+            Shape.text("+").onClick_(countById.update(_.updatedWith(id)(incrementOrCreate))),
+            Shape.text(countById.signal.map(_.getOrElse(id, 0))),
+            Shape.text("-").onClick_(countById.update(_.updatedWith(id)(decrementOrRemove))),
+          )
       }
 
     def incrementOrCreate(maybeInt: Option[Int]): Option[Int] =

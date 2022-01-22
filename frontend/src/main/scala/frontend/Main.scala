@@ -16,9 +16,11 @@ object Main:
   val placeOrderPage = order.form.OrderForm.view
 
   val root =
-    Navigation.view
-      ++ addArticlePage.showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.Catalog))
-      ++ placeOrderPage.showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.PlaceOrder))
+    Shape.list(
+      Navigation.view,
+      addArticlePage.showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.Catalog)),
+      placeOrderPage.showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.PlaceOrder)),
+    )
 
   import com.raquo.laminar.api.L
 
