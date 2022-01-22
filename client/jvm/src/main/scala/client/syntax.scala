@@ -25,6 +25,8 @@ object syntax:
       )
 
   private def convert(method: endpoints.Method) = method match {
-    case endpoints.Method.GET  => zhttp.http.Method.GET
-    case endpoints.Method.POST => zhttp.http.Method.POST
+    case endpoints.Method.GET    => zhttp.http.Method.GET
+    case endpoints.Method.POST   => zhttp.http.Method.POST
+    case endpoints.Method.PATCH  => zhttp.http.Method.PATCH
+    case endpoints.Method.DELETE => zhttp.http.Method.DELETE
   }

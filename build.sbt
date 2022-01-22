@@ -7,7 +7,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "tinto"
   )
-  .aggregate(core, endpoints, server, client, client_scalajs, mira, frontend)
+  .aggregate(core, web, backend, frontend, endpoints, server, client, client_scalajs, mira)
 
 lazy val core = (project in file("core"))
   .enablePlugins(ScalaJSPlugin)
@@ -21,6 +21,38 @@ lazy val core = (project in file("core"))
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
   )
   .dependsOn(price, std_list)
+
+lazy val web = (project in file("web"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(
+    name := "web"
+  )
+  .dependsOn(core, endpoints)
+
+lazy val backend = (project in file("backend"))
+  .settings(
+    name := "backend",
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % "1.2.10"
+    ),
+    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
+  )
+  .dependsOn(core, web, server)
+
+lazy val frontend = (project in file("frontend"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(
+    name := "frontend",
+    libraryDependencies ++= Seq(
+      "dev.zio" %%% "zio"      % "1.0.13",
+      "dev.zio"  %% "zio-test" % "1.0.13" % Test,
+      "dev.zio" %%% "zio-json" % "0.2.0-M3",
+    ),
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) },
+    scalaJSLinkerConfig ~= { _.withSourceMap(false) },
+    scalaJSUseMainModuleInitializer := true,
+  )
+  .dependsOn(core, web, mira, client_scalajs)
 
 // lazy val api = (project in file("api"))
 //   .settings(
@@ -97,21 +129,6 @@ lazy val client_scalajs = (project in file("client/js"))
 lazy val price    = ProjectRef(uri("https://github.com/palanga/aconcagua.git#v1.1.1"), "price")
 lazy val std_list = ProjectRef(uri("https://github.com/palanga/aconcagua.git#v1.1.1"), "std_list")
 
-lazy val frontend = (project in file("frontend"))
-  .enablePlugins(ScalaJSPlugin)
-  .settings(
-    name := "frontend",
-    libraryDependencies ++= Seq(
-      "dev.zio" %%% "zio"      % "1.0.13",
-      "dev.zio"  %% "zio-test" % "1.0.13" % Test,
-      "dev.zio" %%% "zio-json" % "0.2.0-M3",
-    ),
-    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) },
-    scalaJSLinkerConfig ~= { _.withSourceMap(false) },
-    scalaJSUseMainModuleInitializer := true,
-  )
-  .dependsOn(core, mira, endpoints, client_scalajs)
-
 lazy val mira = (project in file("mira"))
   .enablePlugins(ScalaJSPlugin)
   .settings(
@@ -121,9 +138,6 @@ lazy val mira = (project in file("mira"))
       "dev.zio"    %% "zio-test" % "1.0.13" % Test,
       "com.raquo" %%% "laminar"  % "0.14.2",
     ),
-//    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) },
-//    scalaJSLinkerConfig ~= { _.withSourceMap(false) },
-//    scalaJSUseMainModuleInitializer := true,
   )
 
 lazy val examples = (project in file("examples"))

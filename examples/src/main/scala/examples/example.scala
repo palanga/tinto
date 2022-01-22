@@ -14,11 +14,17 @@ object examplev4 extends zio.App:
     val healthCheckV2: AnyUnitEndpoint = Endpoint.get("healthcheck/v2")
 //    val echo: ParamsAnyUnitEndpoint[(String, Int)] = Endpoint.get(Route.init / "echo" / StringParam / IntParam)
     val echoa: ParamsOutEndpoint[String, String] = Endpoint.get(Route.init / "echo" / StringParam).out[String]
-//  val book        = v4.Endpoint.get("book").out[Book]
+  //  val book        = v4.Endpoint.get("book").out[Book]
 
 //case class Book(name: String)
 //
 //given JsonCodec[Book] = DeriveJsonCodec.gen
+
+  val docs = List(
+    api.healthCheckV2,
+    api.echoa,
+    api.healthCheck,
+  ).sortBy(_.route.toString).map(_.docs).mkString("\n")
 
   object app:
     import zio.duration.*
@@ -40,12 +46,6 @@ object examplev4 extends zio.App:
     }
     val port      = 8080
     val appServer = Server.port(port) ++ Server.app(httpApp @@ cors(CORSConfig(true)))
-
-  val docs = List(
-    api.healthCheckV2,
-    api.echoa,
-    api.healthCheck,
-  ).sortBy(_.route.toString).map(_.docs).mkString("\n")
 
   override def run(args: List[String]) =
     app.appServer.make

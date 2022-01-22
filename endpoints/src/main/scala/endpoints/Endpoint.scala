@@ -1,19 +1,22 @@
 package endpoints
 
 import endpoints.Route.*
+import izumi.reflect.Tag
 import zio.ZIO
 import zio.json.*
 
-import scala.reflect.{ClassTag, classTag}
-
 enum Method:
-  case GET, POST
+  case GET, POST, DELETE, PATCH
 
 object Endpoint:
-  def get(route: String)                         = AnyUnitEndpoint(Method.GET, Route.init / route)
-  def get[PathParams](route: Route[PathParams])  = ParamsAnyUnitEndpoint(Method.GET, route)
-  def post(route: String)                        = AnyUnitEndpoint(Method.POST, Route.init / route)
-  def post[PathParams](route: Route[PathParams]) = ParamsAnyUnitEndpoint(Method.POST, route)
+  def get(route: String)                           = AnyUnitEndpoint(Method.GET, Route.init / route)
+  def get[PathParams](route: Route[PathParams])    = ParamsAnyUnitEndpoint(Method.GET, route)
+  def post(route: String)                          = AnyUnitEndpoint(Method.POST, Route.init / route)
+  def post[PathParams](route: Route[PathParams])   = ParamsAnyUnitEndpoint(Method.POST, route)
+  def delete(route: String)                        = AnyUnitEndpoint(Method.DELETE, Route.init / route)
+  def delete[PathParams](route: Route[PathParams]) = ParamsAnyUnitEndpoint(Method.DELETE, route)
+  def patch(route: String)                         = AnyUnitEndpoint(Method.PATCH, Route.init / route)
+  def patch[PathParams](route: Route[PathParams])  = ParamsAnyUnitEndpoint(Method.PATCH, route)
 
 object example:
   val echo: ParamsInOutEndpoint[(String, Int), Book, Book] =
@@ -67,70 +70,72 @@ sealed trait NoParamsEndpoint[BodyIn, BodyOut] extends Endpoint[Any, BodyIn, Bod
     NoParamsEndpointWithResolver(this, f)
 
 case class AnyUnitEndpoint(method: Method, route: Route0) extends NoParamsEndpoint[Any, Unit]:
-  def in[In: ClassTag](using codec: JsonCodec[In]): InEndpoint[In]      = InEndpoint[In](method, route, codec)
-  def out[Out: ClassTag](using codec: JsonCodec[Out]): OutEndpoint[Out] = OutEndpoint[Out](method, route, codec)
-  override def docs: String                                             = s"$method $route"
+  def in[In](using codec: JsonCodec[In], classTag: Tag[In]): InEndpoint[In] = InEndpoint[In](method, route, codec)
+  def out[Out](using codec: JsonCodec[Out], classTag: Tag[Out]): OutEndpoint[Out] =
+    OutEndpoint[Out](method, route, codec)
+  override def docs: String = s"$method $route"
 
-case class InEndpoint[In: ClassTag](method: Method, route: Route0, inCodec: JsonCodec[In])
+case class InEndpoint[In: Tag](method: Method, route: Route0, inCodec: JsonCodec[In])
     extends NoParamsEndpoint[In, Unit]:
-  def out[Out: ClassTag](using codec: JsonCodec[Out]): InOutEndpoint[In, Out] =
+  def out[Out](using codec: JsonCodec[Out], tag: Tag[Out]): InOutEndpoint[In, Out] =
     InOutEndpoint[In, Out](method, route, inCodec, codec)
-  override def docs: String = s"$method $route -> ${classTag[In].runtimeClass.getSimpleName}"
+  override def docs: String = s"$method $route -> ${Tag[In].tag}"
 
-case class OutEndpoint[Out: ClassTag](method: Method, route: Route0, outCodec: JsonCodec[Out])
+case class OutEndpoint[Out: Tag](method: Method, route: Route0, outCodec: JsonCodec[Out])
     extends NoParamsEndpoint[Any, Out]:
-  def in[In: ClassTag](using codec: JsonCodec[In]): InOutEndpoint[In, Out] =
+  def in[In](using codec: JsonCodec[In], classTag: Tag[In]): InOutEndpoint[In, Out] =
     InOutEndpoint[In, Out](method, route, codec, outCodec)
-  override def docs: String = s"$method $route -> ${classTag[Out].runtimeClass.getSimpleName}"
+  override def docs: String = s"$method $route -> ${Tag[Out].tag}"
 
-case class InOutEndpoint[In: ClassTag, Out: ClassTag](
+case class InOutEndpoint[In: Tag, Out: Tag](
   method: Method,
   route: Route0,
   inCodec: JsonCodec[In],
   outCodec: JsonCodec[Out],
 ) extends NoParamsEndpoint[In, Out]:
   override def docs: String =
-    s"$method $route -> ${classTag[In].runtimeClass.getSimpleName} -> ${classTag[In].runtimeClass.getSimpleName}"
+    s"$method $route -> ${Tag[In].tag} -> ${Tag[Out].tag}"
 
 case class ParamsAnyUnitEndpoint[P](method: Method, route: Route[P]) extends ParamsEndpoint[P, Any, Unit]:
-  def in[In: ClassTag](using codec: JsonCodec[In]): ParamsInEndpoint[P, In] =
+  def in[In](using codec: JsonCodec[In], classTag: Tag[In]): ParamsInEndpoint[P, In] =
     ParamsInEndpoint[P, In](method, route, codec)
-  def out[Out: ClassTag](using codec: JsonCodec[Out]): ParamsOutEndpoint[P, Out] =
+  def out[Out](using codec: JsonCodec[Out], classTag: Tag[Out]): ParamsOutEndpoint[P, Out] =
     ParamsOutEndpoint[P, Out](method, route, codec)
   override def docs: String = s"$method $route"
 
-case class ParamsInEndpoint[P, In: ClassTag](method: Method, route: Route[P], inCodec: JsonCodec[In])
+case class ParamsInEndpoint[P, In: Tag](method: Method, route: Route[P], inCodec: JsonCodec[In])
     extends ParamsEndpoint[P, In, Unit]:
-  def out[Out: ClassTag](using codec: JsonCodec[Out]): ParamsInOutEndpoint[P, In, Out] =
+  def out[Out](using codec: JsonCodec[Out], classTag: Tag[Out]): ParamsInOutEndpoint[P, In, Out] =
     ParamsInOutEndpoint[P, In, Out](method, route, inCodec, codec)
   override def docs: String =
-    s"$method $route -> ${classTag[In].runtimeClass.getSimpleName}"
+    s"$method $route -> ${Tag[In]}"
 
-case class ParamsOutEndpoint[P, Out: ClassTag](method: Method, route: Route[P], outCodec: JsonCodec[Out])
+case class ParamsOutEndpoint[P, Out: Tag](method: Method, route: Route[P], outCodec: JsonCodec[Out])
     extends ParamsEndpoint[P, Any, Out]:
-  def in[In: ClassTag](using codec: JsonCodec[In]): ParamsInOutEndpoint[P, In, Out] =
+  def in[In](using codec: JsonCodec[In], classTag: Tag[In]): ParamsInOutEndpoint[P, In, Out] =
     ParamsInOutEndpoint[P, In, Out](method, route, codec, outCodec)
   override def docs: String =
-    s"$method $route -> ${classTag[Out].runtimeClass.getSimpleName}"
+    s"$method $route -> ${Tag[Out].tag}"
 
-case class ParamsInOutEndpoint[P, In: ClassTag, Out: ClassTag](
+case class ParamsInOutEndpoint[P, In: Tag, Out: Tag](
   method: Method,
   route: Route[P],
   inCodec: JsonCodec[In],
   outCodec: JsonCodec[Out],
 ) extends ParamsEndpoint[P, In, Out]:
   override def docs: String =
-    s"$method $route -> ${classTag[In].runtimeClass.getSimpleName} -> ${classTag[In].runtimeClass.getSimpleName}"
+    s"$method $route -> ${Tag[In]} -> ${Tag[Out].tag}"
 
-sealed trait EndpointWithResolver[-R, PathParams, BodyIn, BodyOut]
+sealed trait EndpointWithResolver[-R, PathParams, BodyIn, BodyOut]:
+  val endpoint: Endpoint[PathParams, BodyIn, BodyOut]
 
 case class ParamsEndpointWithResolver[-R, P, In, Out](
-  endpoint: ParamsEndpoint[P, In, Out],
+  endpoint: Endpoint[P, In, Out],
   resolver: (P, In) => ZIO[R, Throwable, Out],
 ) extends EndpointWithResolver[R, P, In, Out]
 
 case class NoParamsEndpointWithResolver[-R, In, Out](
-  endpoint: NoParamsEndpoint[In, Out],
+  endpoint: Endpoint[Any, In, Out],
   resolver: In => ZIO[R, Throwable, Out],
 ) extends EndpointWithResolver[R, Any, In, Out]
 

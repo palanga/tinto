@@ -10,34 +10,37 @@ import endpoints.*
 
 object Main:
 
-  private val nubeVar      = Var("nube var vacia")
-  private val echoEndpoint = endpoints.Endpoint.get(Route.init / "echo" / StringParam).out[String]
-
-  val a      = endpoints.Endpoint.get(Route.init / "users" / StringParam / "posts" / IntParam / StringParam)
-  val fetchA = fetch(a)
-
-  private val echo = fetch(echoEndpoint)
-
+//  private val nubeVar      = Var("nube var vacia")
+//  private val echoEndpoint = endpoints.Endpoint.get(Route.init / "echo" / StringParam).out[String]
+//
+//  val a      = endpoints.Endpoint.get(Route.init / "users" / StringParam / "posts" / IntParam / StringParam)
+//  val fetchA = fetch(a)
+//
+//  private val echo = fetch(echoEndpoint)
+//
   implicit val runtime: Runtime[ZEnv] = Runtime.default
-
-  private val fetchZIO =
-    import zio.duration.*
-    Shape
-      .text(nubeVar.signal)
-      .onClick(echo("hola nuvolina", ()).tap(putStrLn(_)).delay(1.second).map(nubeVar.set).ignore)
-//      .onClick(fetchA(("hola", 13, "nuvolina"), ()).ignore)
-
-//  private val fetchNoZIO =
-//    import client.scalajs.syntax.fetch
+//
+//  private val fetchZIO =
+//    import zio.duration.*
 //    Shape
 //      .text(nubeVar.signal)
-//      .onClick(runtime unsafeRunAsync_ echoEndpoint.fetch("hola nuvolina no zio").map(nubeVar.set))
+//      .onClick(echo("hola nuvolina", ()).tap(putStrLn(_)).delay(1.second).map(nubeVar.set).ignore)
+////      .onClick(fetchA(("hola", 13, "nuvolina"), ()).ignore)
+//
+////  private val fetchNoZIO =
+////    import client.scalajs.syntax.fetch
+////    Shape
+////      .text(nubeVar.signal)
+////      .onClick(runtime unsafeRunAsync_ echoEndpoint.fetch("hola nuvolina no zio").map(nubeVar.set))
+
+  val root = ArticleForm.view ++ Catalog.view
 
   def main(args: Array[String]): Unit =
+    runtime unsafeRunAsync_ Catalog.loadCatalog()
     renderOnDomContentLoaded(
       org.scalajs.dom.document.querySelector("#app"),
       div(
-        fetchZIO.build
+        root.build
 //        fetchNoZIO.build,
 //        example.root.build,
       ),

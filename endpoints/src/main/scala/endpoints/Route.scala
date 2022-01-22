@@ -1,6 +1,7 @@
 package endpoints
 
-sealed trait Route[PathParams]
+sealed trait Route[PathParams]:
+  val path: String
 
 object Route:
   val init: Start.type = Start

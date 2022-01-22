@@ -88,6 +88,8 @@ object client:
     ZIO.succeed(FetchBackend()).toManaged(backend => ZIO.fromFuture(_ => backend.close()).ignore)
 
   private def convert(method: endpoints.Method) = method match {
-    case endpoints.Method.GET  => sttp.model.Method.GET
-    case endpoints.Method.POST => sttp.model.Method.POST
+    case endpoints.Method.GET    => sttp.model.Method.GET
+    case endpoints.Method.POST   => sttp.model.Method.POST
+    case endpoints.Method.DELETE => sttp.model.Method.DELETE
+    case endpoints.Method.PATCH  => sttp.model.Method.PATCH
   }
