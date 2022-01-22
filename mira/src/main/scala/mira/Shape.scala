@@ -32,7 +32,7 @@ object Shape:
   def text(text: AnyVal): Node[Any]                           = Node(text.toString)
   def text(textSignal: => Signal[String | AnyVal]): Node[Any] = empty.bind(textSignal)
   def list[R](shapes: => Signal[Iterable[Shape[R]]]): Node[R] = empty.bindAll(shapes)
-  def list[R](shape: Shape[R], shapes: Shape[R]*): Edge[R]    = Edge(shapes.prepended(shape))
+//  def list[R](shape: Shape[R], shapes: Shape[R]*): Edge[R]    = Edge(shapes.prepended(shape))
 
   def when(condition: => Signal[Boolean]): When = When(condition)
 
@@ -52,10 +52,11 @@ object Shape:
     private val kind: "div" | "input" = "div",
   ) extends Shape(attributes):
 
-    def bind(signal: Signal[String | AnyVal]): Node[R] = this.addAttribute(Attribute.BindSignal(signal.map(_.toString)))
+    def bind(signal: => Signal[String | AnyVal]): Node[R] =
+      this.addAttribute(Attribute.BindSignal(() => signal.map(_.toString)))
 
-    def bindAll[R1](signal: Signal[Iterable[Shape[R1]]]): Node[R & R1] =
-      this.addAttribute(Attribute.BindSignals(signal))
+    def bindAll[R1](signal: => Signal[Iterable[Shape[R1]]]): Node[R & R1] =
+      this.addAttribute(Attribute.BindSignals(() => signal))
 
     def placeholder(text: String): Node[R] = this.addAttribute(Attribute.Placeholder(text))
 
@@ -75,15 +76,12 @@ object Shape:
 
     def onKeyPress_(f: KeyCode => Unit): Node[R] = addAttribute(Attribute.OnKeyPress(ZIO succeed f(_)))
 
-    def onKeyPress_(f: PartialFunction[KeyCode, Unit]): Node[R] =
-//      f.
-//      val a: KeyCode => UIO[Unit] = ZIO succeed f(_)
-      onKeyPress(ZIO succeed f(_))
+    def onKeyPress_(f: PartialFunction[KeyCode, Unit]): Node[R] = onKeyPress(ZIO succeed f(_))
 
     override def showWhen(condition: => Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
 
     override def build(using runtime: Runtime[R]): LaminarElem =
-      val laminarMods = attributes.map(toLaminarMod(this))
+      def laminarMods = attributes.map(toLaminarMod(this))
       this.kind match {
         case "div"   => L.div(text, laminarMods)
         case "input" => L.input(laminarMods)
@@ -115,18 +113,9 @@ object Shape:
     override def showWhen(condition: => Signal[Boolean]): Edge[R] = this.copy(conditionalShow = Some(condition))
 
     override def build(using runtime: Runtime[R]): LaminarElem =
-      conditionalShow.fold(L.div(children.map(_.build), attributes.map(toLaminarMod(this))))(shouldDisplay =>
-        L.div(
-          L.child.maybe <-- shouldDisplay
-            .map(
-              Option.when(_)(L.div(children.map(_.build), attributes.map(toLaminarMod(this))))
-            )
-            .observe(L.unsafeWindowOwner)
-//          L.onMountBind()
-//          L.unsafeWindowOwner
-
-        )
-      )
+      def child                              = L.div(children.map(_.build), attributes.map(toLaminarMod(this)))
+      def maybeChild(maybe: Signal[Boolean]) = L.div(L.child.maybe <-- maybe.map(Option.when(_)(child)))
+      conditionalShow.fold(child)(maybeChild)
 
     override def addAttribute[R1](attribute: Attribute[R1]): Edge[R & R1] =
       this.copy(attributes = attribute :: attributes)

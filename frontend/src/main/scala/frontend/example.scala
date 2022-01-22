@@ -37,34 +37,24 @@ object example:
   val b: Shape.Edge[zio.console.Console & zio.clock.Clock] = Navigation ++ Perris
 
   private def Navigation =
-    Shape.list(
-      Shape.text("perris").onClick_(state.showPerris),
-      Shape.text("clicks").onClick_(state.showClicks),
-    )
+    Shape.text("perris").onClick_(state.showPerris) ++ Shape.text("clicks").onClick_(state.showClicks)
 
   private def Perris =
-    Shape.list(
-      Shape
-        .text(state.text)
-        .onInput_(state.setText)
-        .placeholder("El nombre de tu perri")
-        .onKeyPress { case KeyCode.Enter => state.addPerriZIO },
-      Shape.text(state.error).showWhen(state.error.map(_.nonEmpty)),
-      Shape.list(state.names.map(_.map(Perri))),
-    )
+    Shape
+      .text(state.text)
+      .onInput_(state.setText)
+      .placeholder("El nombre de tu perri")
+      .onKeyPress { case KeyCode.Enter => state.addPerriZIO }
+      ++ Shape.text(state.error).showWhen(state.error.map(_.nonEmpty))
+      ++ Shape.list(state.names.map(_.map(Perri)))
 
   private def Perri(name: String) =
-    Shape.list(
-      Shape.text("-").onClick_(state.removePerri(name)),
-      Shape.text(s"el perri se llama $name"),
-    )
+    Shape.text("-").onClick_(state.removePerri(name)) ++ Shape.text(s"el perri se llama $name")
 
   private def Counter =
-    Shape.list(
-      Shape.text("+").onClick_(state.incrementClicks),
-      Shape.text(state.clicks),
-      Shape.text("-").onClick_(state.decrementClicks),
-    )
+    Shape.text("+").onClick_(state.incrementClicks)
+      ++ Shape.text(state.clicks)
+      ++ Shape.text("-").onClick_(state.decrementClicks)
 
   case class State(
     private val _selectedTab: Var[Tab] = Var(Tab.Perris),

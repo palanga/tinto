@@ -48,20 +48,18 @@ object OrderForm:
 
     def view =
       Shape
-        .list(Catalog.catalog.signal.map(_.map(renderArticle).toList))
+        .list(Catalog.catalog.signal.map(_.map(renderArticle)))
         .showWhen(currentStep.signal.map(_ == Step.SelectArticles))
 
     private def renderArticle(id: UUID, article: Article) =
       article match {
         case Article(title, subtitle, price) =>
-          Shape.list(
-            Shape.text(title.self),
-            Shape.text(subtitle),
-            Shape.text(price.toString),
-            Shape.text("+").onClick_(countById.update(_.updatedWith(id)(incrementOrCreate))),
-            Shape.text(countById.signal.map(_.getOrElse(id, 0))),
-            Shape.text("-").onClick_(countById.update(_.updatedWith(id)(decrementOrRemove))),
-          )
+          Shape.text(title.self)
+            ++ Shape.text(subtitle)
+            ++ Shape.text(price.toString)
+            ++ Shape.text("+").onClick_(countById.update(_.updatedWith(id)(incrementOrCreate)))
+            ++ Shape.text(countById.signal.map(_.getOrElse(id, 0)))
+            ++ Shape.text("-").onClick_(countById.update(_.updatedWith(id)(decrementOrRemove)))
       }
 
     def incrementOrCreate(maybeInt: Option[Int]): Option[Int] =
