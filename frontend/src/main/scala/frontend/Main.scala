@@ -1,12 +1,8 @@
 package frontend
 
-import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.*
 import mira.*
-import zio.console.putStrLn
 import zio.{Runtime, ZEnv}
-import client.scalajs.client.fetch
-import endpoints.*
 
 object Main:
 

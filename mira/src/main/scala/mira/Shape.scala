@@ -3,14 +3,24 @@ package mira
 import com.raquo.domtypes.generic.Modifier
 import com.raquo.laminar.api.L
 import com.raquo.laminar.api.L.*
+import com.raquo.domtypes.generic.keys.Style as LaminarStyle
 import com.raquo.laminar.nodes.ReactiveHtmlElement
+import mira.Shape.*
+import mira.projection.*
 import org.scalajs.dom
 import zio.{Runtime, UIO, ZIO}
-import Shape.*
 
 import scala.language.postfixOps
 
 sealed trait Shape[-R](attributes: List[Attribute[R]]):
+
+  def border     = BorderProjection(this)
+  def color      = ColorProjection(this, L.color)
+  def background = BackgroundProjection(this)
+  def padding    = PaddingProjection(this)
+  def margin     = MarginProjection(this)
+  def height     = SizeProjection(this, L.height)
+  def elevation  = ElevationProjection(this)
 
   def showWhen(condition: => Signal[Boolean]): Edge[R]
   def hideWhen(condition: => Signal[Boolean]): Edge[R] = showWhen(condition.map(!_))
@@ -22,11 +32,12 @@ sealed trait Shape[-R](attributes: List[Attribute[R]]):
 
   def build(using runtime: Runtime[R]): LaminarElem
 
-  protected def addAttribute[R1](attribute: Attribute[R1]): Shape[R & R1]
+  private[mira] def addAttribute[R1](attribute: Attribute[R1]): Shape[R & R1]
 
 object Shape:
 
   val empty: Node[Any]                                        = Node("")
+  val button: Node[Any]                                       = Node("", kind = "button")
   val input: Node[Any]                                        = Node("", kind = "input")
   def text(text: String): Node[Any]                           = Node(text)
   def text(text: AnyVal): Node[Any]                           = Node(text.toString)
@@ -49,8 +60,10 @@ object Shape:
   case class Node[-R](
     private val text: String,
     private val attributes: List[Attribute[R]] = Nil,
-    private val kind: "div" | "input" = "div",
+    private val kind: "div" | "input" | "button" = "div",
   ) extends Shape(attributes):
+
+    def text(text: String): Node[R] = this.copy(text = text)
 
     def bind(signal: => Signal[String | AnyVal]): Node[R] =
       this.addAttribute(Attribute.BindSignal(() => signal.map(_.toString)))
@@ -83,8 +96,9 @@ object Shape:
     override def build(using runtime: Runtime[R]): LaminarElem =
       def laminarMods = attributes.map(toLaminarMod(this))
       this.kind match {
-        case "div"   => L.div(text, laminarMods)
-        case "input" => L.input(laminarMods)
+        case "div"    => L.div(text, laminarMods)
+        case "button" => L.button(text, laminarMods)
+        case "input"  => L.input(laminarMods)
       }
 
     override def addAttribute[R1](attribute: Attribute[R1]): Node[R & R1] =

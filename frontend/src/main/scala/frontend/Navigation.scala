@@ -11,5 +11,30 @@ object Navigation:
   val currentPage = Var(Page.Catalog)
 
   val view =
-    Shape.text("CATALOGO").onClick_(currentPage.set(Page.Catalog))
-      ++ Shape.text("CARGAR ORDEN").onClick_(currentPage.set(Page.PlaceOrder))
+    Shape
+      .button
+      .text("CATALOGO")
+      .onClick_(currentPage.set(Page.Catalog))
+      .background.color.primary
+      .color.onPrimary
+      .border.radius.small
+      .border.none
+      .padding.horizontal.large
+//      .padding.vertical.small
+      .margin.small
+      .height.large
+      .elevation.small
+    ++
+    Shape
+      .button
+      .text("CARGAR ORDEN")
+      .onClick_(currentPage.set(Page.PlaceOrder))
+      .background.color.secondary
+      .color.onSecondary
+      .border.radius.small
+      .border.none
+      .padding.horizontal.large
+      .padding.vertical.small
+      .margin.small
+      .height.large
+      .elevation.small
