@@ -15,6 +15,7 @@ enum Attribute[-R]:
   case OnInput(f: String => ZIO[R, Nothing, Any])
   case OnKeyPress(f: Int => ZIO[R, Nothing, Any])
   case OnHover(in: ZIO[R, Nothing, Any], out: ZIO[R, Nothing, Any])
+  case OnMouse(down: ZIO[R, Nothing, Any], up: ZIO[R, Nothing, Any])
   case Style(mod: () => LaminarMod)
 
 class StyleType(val toLaminarMod: () => LaminarMod)
@@ -29,6 +30,7 @@ def toLaminarMod[R](shape: => Shape[_])(attribute: Attribute[R])(using runtime: 
     case OnInput(f)          => L.onInput.mapToValue --> { runtime unsafeRunAsync_ f(_) }
     case OnKeyPress(f)       => L.onKeyPress.map(_.keyCode) --> { runtime unsafeRunAsync_ f(_) }
     case OnHover(in, out)    => List(onMouseOver --> { _ => run(in) }, onMouseOut --> { _ => run(out) })
+    case OnMouse(down, up)   => List(L.onMouseDown --> { _ => run(down) }, L.onMouseUp --> { _ => run(up) })
     case Style(mod)          => mod()
   }
 

@@ -14,8 +14,16 @@ object Main:
   val root =
     Shape.list(
       Navigation.view,
-      addArticlePage.showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.Catalog)),
-      placeOrderPage.showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.PlaceOrder)),
+      addArticlePage
+        .showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.Catalog))
+        .margin.small
+        .padding.small
+        .elevation.small,
+      placeOrderPage
+        .showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.PlaceOrder))
+        .margin.small
+        .padding.small
+        .elevation.small,
     )
 
   import com.raquo.laminar.api.L

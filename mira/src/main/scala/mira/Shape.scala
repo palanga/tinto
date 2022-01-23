@@ -21,6 +21,7 @@ sealed trait Shape[-R](attributes: List[Attribute[R]]):
   def margin     = MarginProjection(this)
   def height     = SizeProjection(this, L.height)
   def elevation  = ElevationProjection(this)
+  def cursor     = CursorProjection(this)
 
   def showWhen(condition: => Signal[Boolean]): Edge[R]
   def hideWhen(condition: => Signal[Boolean]): Edge[R] = showWhen(condition.map(!_))

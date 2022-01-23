@@ -20,10 +20,10 @@ object Navigation:
       .border.radius.small
       .border.none
       .padding.horizontal.large
-//      .padding.vertical.small
       .margin.small
       .height.large
       .elevation.small
+      .cursor.pointer
     ++
     Shape
       .button
@@ -34,7 +34,7 @@ object Navigation:
       .border.radius.small
       .border.none
       .padding.horizontal.large
-      .padding.vertical.small
       .margin.small
       .height.large
       .elevation.small
+      .cursor.pointer
