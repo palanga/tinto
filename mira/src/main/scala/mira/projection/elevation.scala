@@ -1,40 +1,30 @@
 package mira.projection
 
 import com.raquo.airstream.core.Signal
-import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.*
 import mira.*
+import mira.projection.Elevation.*
 import zio.ZIO
 
 class ElevationProjection[-R](private val self: Shape[R]):
-  private val isHovered                          = Var(false)
-  private val isPressed                          = Var(false)
-  private val zipped: Signal[(Boolean, Boolean)] = isHovered.signal combineWith isPressed.signal
+  def none    = self.addAttribute(Attribute.Style(() => L.boxShadow := shadow(None)))
+  def lowest  = self.addAttribute(Attribute.Style(() => L.boxShadow := shadow(Lowest)))
+  def low     = self.addAttribute(Attribute.Style(() => L.boxShadow := shadow(Low)))
+  def medium  = self.addAttribute(Attribute.Style(() => L.boxShadow := shadow(Medium)))
+  def high    = self.addAttribute(Attribute.Style(() => L.boxShadow := shadow(High)))
+  def highest = self.addAttribute(Attribute.Style(() => L.boxShadow := shadow(Highest)))
 
-  private def withStatus =
-    self
-      .addAttribute(Attribute.OnHover(ZIO succeed isHovered.set(true), ZIO succeed isHovered.set(false)))
-      .addAttribute(Attribute.OnMouse(ZIO succeed isPressed.set(true), ZIO succeed isPressed.set(false)))
-      .addAttribute(Attribute.Style(() => L.opacity <-- zipped.map(opacity)))
+  def dynamic(elevation: Signal[Elevation]) =
+    self.addAttribute(Attribute.Style(() => L.boxShadow <-- elevation.map(shadow)))
 
-  def none     = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(0))))
-  def smallest = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(4))))
-  def small    = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(6))))
-  def medium   = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(8))))
-  def large    = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(10))))
-  def largest  = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(12))))
+enum Elevation:
+  case None, Lowest, Low, Medium, High, Highest
 
-  def dynamic(elevation: Signal[Int]) = self.addAttribute(Attribute.Style(() => L.boxShadow <-- elevation.map(shadow)))
-
-private def shadow(elevation: Int) = s"gray 1px 1px ${elevation}px -2px"
-
-private def shadowZ(initialElevation: Int)(status: (Boolean, Boolean)) = status match {
-  case (false, false) => shadow(initialElevation)
-  case (true, false)  => shadow(initialElevation + 4)
-  case _              => shadow(0)
-}
-
-private def opacity(status: (Boolean, Boolean)) = status match {
-  case (true, false) => "90%"
-  case _             => "100%"
+private def shadow(elevation: Elevation) = elevation match {
+  case None    => "gray 1px 1px 0px -2px"
+  case Lowest  => "gray 1px 1px 4px -2px"
+  case Low     => "gray 1px 1px 6px -2px"
+  case Medium  => "gray 1px 1px 8px -2px"
+  case High    => "gray 1px 1px 10px -2px"
+  case Highest => "gray 1px 1px 12px -2px"
 }

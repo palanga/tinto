@@ -22,7 +22,7 @@ object Navigation:
       .padding.horizontal.large
       .margin.small
       .height.large
-      .elevation.small
+      .elevation.low
       .cursor.pointer
     ++
     Shape
@@ -36,5 +36,5 @@ object Navigation:
       .padding.horizontal.large
       .margin.small
       .height.large
-      .elevation.small
+      .elevation.low
       .cursor.pointer

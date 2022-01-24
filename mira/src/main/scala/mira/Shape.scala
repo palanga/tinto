@@ -12,7 +12,7 @@ import zio.{Runtime, UIO, ZIO}
 
 import scala.language.postfixOps
 
-sealed trait Shape[-R](attributes: List[Attribute[R]]):
+trait Shape[-R](attributes: List[Attribute[R]]):
 
   def border     = BorderProjection(this)
   def color      = ColorProjection(this, L.color)
@@ -58,11 +58,21 @@ object Shape:
    */
   def fromShapesSignal[R](shapesSignal: => Signal[Iterable[Shape[R]]]): Node[R] = Shape.list(shapesSignal)
 
-  case class Node[-R](
-    private val text: String,
-    private val attributes: List[Attribute[R]] = Nil,
-    private val kind: "div" | "input" | "button" = "div",
+  object Node:
+    def unapply[R](node: Node[R]): Option[(String, List[Attribute[R]], "div" | "input" | "button")] =
+      ???
+
+  class Node[-R](
+    val text: String,
+    val attributes: List[Attribute[R]] = Nil,
+    val kind: "div" | "input" | "button" = "div",
   ) extends Shape(attributes):
+
+    def copy[R1](
+      text: String = this.text,
+      attributes: List[Attribute[R1]] = this.attributes,
+      kind: "div" | "input" | "button" = this.kind,
+    ): Node[R & R1] = Node(text, attributes, kind)
 
     def text(text: String): Node[R] = this.copy(text = text)
 
@@ -153,9 +163,22 @@ class When(condition: Signal[Boolean]):
   def show[R](shape: Shape[R]): Edge[R] = shape.showWhen(condition)
   def hide[R](shape: Shape[R]): Edge[R] = shape.hideWhen(condition)
 
-object Button:
+class Button[-R]:
+  object variant:
+    def contained: Button[R] = ???
 
-//  Shape.button.contained
+  object color:
+    def primary: Button[R] = ???
+
+  object elevation:
+    def low: Button[R] = ???
+
+//  Shape
+  //  .button
+  //  .variant.contained
+//    .color.primary
+//    .onClick(???)
+  //  .elevation.low
 
   val empty =
     Node("", kind = "button")
@@ -164,5 +187,5 @@ object Button:
       .padding.horizontal.large
       .margin.small
       .height.large
-      .elevation.small
+      .elevation.low
       .cursor.pointer

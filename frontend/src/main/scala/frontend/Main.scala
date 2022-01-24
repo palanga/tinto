@@ -18,12 +18,12 @@ object Main:
         .showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.Catalog))
         .margin.small
         .padding.small
-        .elevation.small,
+        .elevation.low,
       placeOrderPage
         .showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.PlaceOrder))
         .margin.small
         .padding.small
-        .elevation.small,
+        .elevation.low,
     )
 
   import com.raquo.laminar.api.L
