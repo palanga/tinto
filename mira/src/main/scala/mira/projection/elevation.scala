@@ -18,23 +18,21 @@ class ElevationProjection[-R](private val self: Shape[R]):
       .addAttribute(Attribute.Style(() => L.opacity <-- zipped.map(opacity)))
 
   def none     = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(0))))
-  def smallest = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(2))))
-  def small    = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(4))))
-  def medium   = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(6))))
-  def large    = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(8))))
-  def largest  = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(10))))
+  def smallest = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(4))))
+  def small    = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(6))))
+  def medium   = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(8))))
+  def large    = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(10))))
+  def largest  = withStatus.addAttribute(Attribute.Style(() => L.boxShadow <-- zipped.map(shadowZ(12))))
 
   def dynamic(elevation: Signal[Int]) = self.addAttribute(Attribute.Style(() => L.boxShadow <-- elevation.map(shadow)))
 
-private def shadow(elevation: Int) = s"0px 3px ${elevation}px -4px black"
+private def shadow(elevation: Int) = s"gray 1px 1px ${elevation}px -2px"
 
-private def shadowZ(initialElevation: Int)(status: (Boolean, Boolean)) =
-  val elevation = status match {
-    case (false, false) => initialElevation
-    case (true, false)  => initialElevation + 2
-    case _              => 0
-  }
-  s"0px 3px ${elevation}px -4px black"
+private def shadowZ(initialElevation: Int)(status: (Boolean, Boolean)) = status match {
+  case (false, false) => shadow(initialElevation)
+  case (true, false)  => shadow(initialElevation + 4)
+  case _              => shadow(0)
+}
 
 private def opacity(status: (Boolean, Boolean)) = status match {
   case (true, false) => "90%"

@@ -152,3 +152,17 @@ type KeyCode                   = Int
 class When(condition: Signal[Boolean]):
   def show[R](shape: Shape[R]): Edge[R] = shape.showWhen(condition)
   def hide[R](shape: Shape[R]): Edge[R] = shape.hideWhen(condition)
+
+object Button:
+
+//  Shape.button.contained
+
+  val empty =
+    Node("", kind = "button")
+      .border.radius.small
+      .border.none
+      .padding.horizontal.large
+      .margin.small
+      .height.large
+      .elevation.small
+      .cursor.pointer
