@@ -16,7 +16,7 @@ object example:
 
   private val state = State()
 
-  def root: Shape.Edge[zio.ZEnv] =
+  def root: Shape[zio.ZEnv] =
     Navigation
       ++ Perris.showWhen(state.selectedTab.map(_ == Tab.Perris))
 //      ++ Counter.showWhen(state.selectedTab.map(_ == Tab.Clicks))
@@ -30,17 +30,18 @@ object example:
 
   import zio.duration.*
 
-  val a: Shape.Edge[zio.console.Console & zio.clock.Clock] = Shape.empty :: Navigation
+  val a: Edge[zio.console.Console & zio.clock.Clock] = Shape.empty :: Navigation
 
-  val a1: Shape.Edge[zio.console.Console & zio.clock.Clock] = Shape.empty +: Navigation
+  val a1: Edge[zio.console.Console & zio.clock.Clock] = Shape.empty +: Navigation
 
-  val b: Shape.Edge[zio.console.Console & zio.clock.Clock] = Navigation ++ Perris
+  val b: Edge[zio.console.Console & zio.clock.Clock] = Navigation ++ Perris
 
   private def Navigation =
     Shape.text("perris").onClick_(state.showPerris) ++ Shape.text("clicks").onClick_(state.showClicks)
 
   private def Perris =
     Shape
+      .input
       .text(state.text)
       .onInput_(state.setText)
       .placeholder("El nombre de tu perri")

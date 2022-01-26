@@ -1,9 +1,11 @@
 package frontend
 
-import com.raquo.laminar.api.L.*
 import mira.*
 import zio.{Runtime, ZEnv}
 
+/**
+ * TODO implementar inject (actualizar a zio 2) en Shape
+ */
 object Main:
 
   implicit val runtime: Runtime[ZEnv] = Runtime.default
@@ -26,15 +28,10 @@ object Main:
         .elevation.low,
     )
 
-  import com.raquo.laminar.api.L
-
   def main(args: Array[String]): Unit =
+    import com.raquo.laminar.api.L.*
     runtime unsafeRunAsync_ Catalog.loadCatalog()
     renderOnDomContentLoaded(
       org.scalajs.dom.document.querySelector("#app"),
-      div(
-        root.build
-//        fetchNoZIO.build,
-//        example.root.build,
-      ),
+      root.build(toLaminarModDefault),
     )

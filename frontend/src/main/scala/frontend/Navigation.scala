@@ -15,26 +15,8 @@ object Navigation:
       .button
       .text("CATALOGO")
       .onClick_(currentPage.set(Page.Catalog))
-      .background.color.primary
-      .color.onPrimary
-      .border.radius.small
-      .border.none
-      .padding.horizontal.large
-      .margin.small
-      .height.large
-      .elevation.low
-      .cursor.pointer
     ++
     Shape
       .button
       .text("CARGAR ORDEN")
       .onClick_(currentPage.set(Page.PlaceOrder))
-      .background.color.secondary
-      .color.onSecondary
-      .border.radius.small
-      .border.none
-      .padding.horizontal.large
-      .margin.small
-      .height.large
-      .elevation.low
-      .cursor.pointer

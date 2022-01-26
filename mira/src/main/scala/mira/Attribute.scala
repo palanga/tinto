@@ -20,12 +20,12 @@ enum Attribute[-R]:
 
 class StyleType(val toLaminarMod: () => LaminarMod)
 
-def toLaminarMod[R](shape: => Shape[_])(attribute: Attribute[R])(using runtime: Runtime[R]): LaminarMod =
+def toLaminarModDefault[R](shape: => Shape[R])(attribute: Attribute[R])(using runtime: Runtime[R]): LaminarMod =
   def run = runtime.unsafeRunAsync_
   attribute match {
     case Placeholder(text)   => if isInput(shape) then L.placeholder := text else L.emptyMod
     case BindSignal(signal)  => if isInput(shape) then L.value <-- signal() else L.child.text <-- signal()
-    case BindSignals(signal) => L.children <-- signal().map(_.map(_.build).toSeq)
+    case BindSignals(signal) => L.children <-- signal().map(_.map(shape => shape.build(toLaminarModDefault)).toSeq)
     case OnClick(zio)        => L.onClick --> { _ => runtime.unsafeRunAsync_(zio) }
     case OnInput(f)          => L.onInput.mapToValue --> { runtime unsafeRunAsync_ f(_) }
     case OnKeyPress(f)       => L.onKeyPress.map(_.keyCode) --> { runtime unsafeRunAsync_ f(_) }
@@ -35,8 +35,8 @@ def toLaminarMod[R](shape: => Shape[_])(attribute: Attribute[R])(using runtime: 
   }
 
 private def isInput(shape: => Shape[_]) = shape match {
-  case Shape.Node(_, _, "input") => true
-  case _                         => false
+  case _: mira.Input[_] => true
+  case _                => false
 }
 
 val onMouseOver = new EventProp[dom.MouseEvent]("mouseover")

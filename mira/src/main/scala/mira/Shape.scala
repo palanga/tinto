@@ -1,18 +1,20 @@
 package mira
 
 import com.raquo.domtypes.generic.Modifier
-import com.raquo.laminar.api.L
-import com.raquo.laminar.api.L.*
+import com.raquo.laminar.api.L.{Signal, Val}
 import com.raquo.domtypes.generic.keys.Style as LaminarStyle
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import mira.Shape.*
 import mira.projection.*
 import org.scalajs.dom
 import zio.{Runtime, UIO, ZIO}
+import mira.*
 
 import scala.language.postfixOps
 
 trait Shape[-R](attributes: List[Attribute[R]]):
+
+  import com.raquo.laminar.api.L
 
   def border     = BorderProjection(this)
   def color      = ColorProjection(this, L.color)
@@ -23,132 +25,64 @@ trait Shape[-R](attributes: List[Attribute[R]]):
   def elevation  = ElevationProjection(this)
   def cursor     = CursorProjection(this)
 
-  def showWhen(condition: => Signal[Boolean]): Edge[R]
   def hideWhen(condition: => Signal[Boolean]): Edge[R] = showWhen(condition.map(!_))
+  def showWhen(condition: => Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
+
+  def onClick[R1](zio: ZIO[R1, Nothing, Any]): Shape[R & R1] = addAttribute(Attribute.OnClick(zio))
+
+  def onClick_(f: => Unit): Shape[R] = addAttribute(Attribute.OnClick(ZIO succeed f))
+
+  def onKeyPress[R1](f: KeyCode => ZIO[R1, Nothing, Any]): Shape[R & R1] = addAttribute(Attribute.OnKeyPress(f))
+
+  def onKeyPress[R1](f: PartialFunction[KeyCode, ZIO[R1, Nothing, Any]]): Shape[R & R1] =
+    addAttribute(Attribute.OnKeyPress(f.orElse(noopZIO)))
+
+  def onKeyPress_(f: KeyCode => Unit): Shape[R] = addAttribute(Attribute.OnKeyPress(ZIO succeed f(_)))
+
+  def onKeyPress_(f: PartialFunction[KeyCode, Unit]): Shape[R] = onKeyPress(ZIO succeed f(_))
+
+  def onMouse[R1](down: ZIO[R1, Nothing, Any], up: ZIO[R1, Nothing, Any]): Shape[R & R1] =
+    addAttribute(Attribute.OnMouse(down, up))
+
+  def onMouse_(down: => Unit, up: => Unit): Shape[R] = addAttribute(Attribute.OnMouse(ZIO succeed down, ZIO succeed up))
+
+  def onHover[R1](in: ZIO[R1, Nothing, Any], out: ZIO[R1, Nothing, Any]): Shape[R & R1] =
+    addAttribute(Attribute.OnHover(in, out))
+
+  def onHover_(in: => Unit, out: => Unit): Shape[R] = addAttribute(Attribute.OnHover(ZIO succeed in, ZIO succeed out))
 
   /**
    * Create a new Shape containing this and that Shapes
    */
   def ++[R1](that: Shape[R1]): Edge[R & R1] = Edge(this :: that :: Nil)
 
-  def build(using runtime: Runtime[R]): LaminarElem
+  def build(toLaminarMod: (=> Shape[R]) => Attribute[R] => LaminarMod): LaminarElem
 
-  private[mira] def addAttribute[R1](attribute: Attribute[R1]): Shape[R & R1]
+  def addAttribute[R1](attribute: Attribute[R1]): Shape[R & R1]
 
 object Shape:
 
-  val empty: Node[Any]                                        = Node("")
-  val button: Node[Any]                                       = Node("", kind = "button")
-  val input: Node[Any]                                        = Node("", kind = "input")
-  def text(text: String): Node[Any]                           = Node(text)
-  def text(text: AnyVal): Node[Any]                           = Node(text.toString)
-  def text(textSignal: => Signal[String | AnyVal]): Node[Any] = empty.bind(textSignal)
-  def list[R](shapes: => Signal[Iterable[Shape[R]]]): Node[R] = empty.bindAll(shapes)
+  val empty: Text[Any]                                        = Text("")
+  def button: Button[Any]                                     = Button.empty
+  val input: Input[Any]                                       = Input()
+  def text(text: String): Text[Any]                           = Text.from(text)
+  def text(text: AnyVal): Text[Any]                           = Text.from(text.toString)
+  def text(textSignal: => Signal[String | AnyVal]): Text[Any] = Text.fromSignal(textSignal)
   def list[R](shape: Shape[R], shapes: Shape[R]*): Edge[R]    = Edge(shapes.prepended(shape))
+  def list[R](shapes: => Signal[Iterable[Shape[R]]]): Edge[R] =
+    Edge(Nil).addAttribute(Attribute.BindSignals(() => shapes))
 
   def when(condition: => Signal[Boolean]): When = When(condition)
 
   /**
    * Alias for [[Shape.text]]
    */
-  def fromTextSignal(textSignal: => Signal[String | AnyVal]): Node[Any] = Shape.text(textSignal)
+  def fromTextSignal(textSignal: => Signal[String | AnyVal]): Text[Any] = Shape.text(textSignal)
 
   /**
    * Alias for [[Shape.list]]
    */
-  def fromShapesSignal[R](shapesSignal: => Signal[Iterable[Shape[R]]]): Node[R] = Shape.list(shapesSignal)
-
-  object Node:
-    def unapply[R](node: Node[R]): Option[(String, List[Attribute[R]], "div" | "input" | "button")] =
-      ???
-
-  class Node[-R](
-    val text: String,
-    val attributes: List[Attribute[R]] = Nil,
-    val kind: "div" | "input" | "button" = "div",
-  ) extends Shape(attributes):
-
-    def copy[R1](
-      text: String = this.text,
-      attributes: List[Attribute[R1]] = this.attributes,
-      kind: "div" | "input" | "button" = this.kind,
-    ): Node[R & R1] = Node(text, attributes, kind)
-
-    def text(text: String): Node[R] = this.copy(text = text)
-
-    def bind(signal: => Signal[String | AnyVal]): Node[R] =
-      this.addAttribute(Attribute.BindSignal(() => signal.map(_.toString)))
-
-    def bindAll[R1](signal: => Signal[Iterable[Shape[R1]]]): Node[R & R1] =
-      this.addAttribute(Attribute.BindSignals(() => signal))
-
-    def placeholder(text: String): Node[R] = this.addAttribute(Attribute.Placeholder(text))
-
-    def onClick[R1](zio: ZIO[R1, Nothing, Any]): Node[R & R1] = this.addAttribute(Attribute.OnClick(zio))
-
-    def onClick_(f: => Unit): Node[R] = addAttribute(Attribute.OnClick(ZIO succeed f))
-
-    def onInput_(f: String => Unit): Node[R] = addAttribute(Attribute.OnInput(ZIO succeed f(_))).copy(kind = "input")
-
-    def onInput[R1](zio: String => ZIO[R1, Nothing, Any]): Node[R & R1] =
-      addAttribute(Attribute.OnInput(zio)).copy(kind = "input")
-
-    def onKeyPress[R1](f: KeyCode => ZIO[R1, Nothing, Any]): Node[R & R1] = addAttribute(Attribute.OnKeyPress(f))
-
-    def onKeyPress[R1](f: PartialFunction[KeyCode, ZIO[R1, Nothing, Any]]): Node[R & R1] =
-      addAttribute(Attribute.OnKeyPress(f.orElse(noopZIO)))
-
-    def onKeyPress_(f: KeyCode => Unit): Node[R] = addAttribute(Attribute.OnKeyPress(ZIO succeed f(_)))
-
-    def onKeyPress_(f: PartialFunction[KeyCode, Unit]): Node[R] = onKeyPress(ZIO succeed f(_))
-
-    override def showWhen(condition: => Signal[Boolean]): Edge[R] = Edge(Seq(this), conditionalShow = Some(condition))
-
-    override def build(using runtime: Runtime[R]): LaminarElem =
-      def laminarMods = attributes.map(toLaminarMod(this))
-      this.kind match {
-        case "div"    => L.div(text, laminarMods)
-        case "button" => L.button(text, laminarMods)
-        case "input"  => L.input(laminarMods)
-      }
-
-    override def addAttribute[R1](attribute: Attribute[R1]): Node[R & R1] =
-      this.copy(attributes = attribute :: attributes)
-
-  case class Edge[-R](
-    private val children: Seq[Shape[R]],
-    private val attributes: List[Attribute[R]] = Nil,
-    private val conditionalShow: Option[Signal[Boolean]] = None,
-  ) extends Shape(attributes):
-
-    def onClick[R1](zio: ZIO[R1, Nothing, Any]): Edge[R & R1] = this.addAttribute(Attribute.OnClick(zio))
-
-    def onClick(f: => Unit): Edge[R] = this.addAttribute(Attribute.OnClick(ZIO succeed f))
-
-    /**
-     * Alias for [[Edge.prependChild]]
-     */
-    def +:[R1](node: Node[R1]): Edge[R & R1] = this.prependChild(node)
-
-    /**
-     * Alias for [[Edge.prependChild]]
-     */
-    def ::[R1](node: Node[R1]): Edge[R & R1] = this.prependChild(node)
-
-    override def showWhen(condition: => Signal[Boolean]): Edge[R] = this.copy(conditionalShow = Some(condition))
-
-    override def build(using runtime: Runtime[R]): LaminarElem =
-      def child                              = L.div(children.map(_.build), attributes.map(toLaminarMod(this)))
-      def maybeChild(maybe: Signal[Boolean]) = L.div(L.child.maybe <-- maybe.map(Option.when(_)(child)))
-      conditionalShow.fold(child)(maybeChild)
-
-    override def addAttribute[R1](attribute: Attribute[R1]): Edge[R & R1] =
-      this.copy(attributes = attribute :: attributes)
-
-    /**
-     * Add a child node at the start of this Shape
-     */
-    private def prependChild[R1](node: Node[R1]): Edge[R & R1] = this.copy(this.children.prepended(node))
+  def fromShapesSignal[R](shapesSignal: => Signal[Iterable[Shape[R]]]): Edge[R] = Shape.list(shapesSignal)
 
 private[mira] val none: Val[None.type]                                   = Val(None)
 private[mira] val always: Val[Boolean]                                   = Val(true)
@@ -158,34 +92,3 @@ private[mira] val noopZIO: PartialFunction[Any, ZIO[Any, Nothing, Unit]] = _ => 
 private[mira] type LaminarElem = ReactiveHtmlElement[_ <: dom.html.Element]
 private[mira] type LaminarMod  = Modifier[LaminarElem]
 type KeyCode                   = Int
-
-class When(condition: Signal[Boolean]):
-  def show[R](shape: Shape[R]): Edge[R] = shape.showWhen(condition)
-  def hide[R](shape: Shape[R]): Edge[R] = shape.hideWhen(condition)
-
-class Button[-R]:
-  object variant:
-    def contained: Button[R] = ???
-
-  object color:
-    def primary: Button[R] = ???
-
-  object elevation:
-    def low: Button[R] = ???
-
-//  Shape
-  //  .button
-  //  .variant.contained
-//    .color.primary
-//    .onClick(???)
-  //  .elevation.low
-
-  val empty =
-    Node("", kind = "button")
-      .border.radius.small
-      .border.none
-      .padding.horizontal.large
-      .margin.small
-      .height.large
-      .elevation.low
-      .cursor.pointer
