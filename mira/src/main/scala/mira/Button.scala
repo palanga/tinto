@@ -8,74 +8,90 @@ import com.raquo.laminar.api.L
 import mira.projection.Elevation
 import mira.projection.shadow
 
-class Button[-R](
+object Buttons:
+  def empty: Button[Any] = Button()
+
+  def contained: Button[Any] =
+    Button()
+      .border.radius.small
+      .border.none
+      .elevation.low
+      .background.color.primary
+      .color.onPrimary
+      .asInstanceOf[Button[Any]]
+
+  def textOnly =
+    Button()
+      .border.radius.small
+      .border.none
+      .elevation.none
+      .background.color.transparent
+      .color.primary
+      .asInstanceOf[Button[Any]]
+
+  def outlined =
+    Button()
+      .border.radius.small
+      .border.thin
+      .border.color.primary
+      .elevation.none
+      .background.color.transparent
+      .color.primary
+      .asInstanceOf[Button[Any]]
+
+case class Button[-R](
   private[mira] val text: String,
   private[mira] val attributes: List[Attribute[R]] = Nil,
-  private[mira] val state: Var[ButtonState] = Var(ButtonState()),
   private[mira] val defaultElevation: Elevation = Elevation.None,
 ) extends Shape(attributes):
 
-//  val currentElevation: Signal[Elevation] = defaultElevation.signal.map(calculateElevation(_, this.state))
+  private val state: Var[ButtonState] = Var(ButtonState())
 
-  def currentElevation = state.signal.map(calculateElevation(defaultElevation, _))
+  private def currentElevation = state.signal.map(calculateElevation(defaultElevation, _))
 
-  def text(text: String): Button[R] = new Button(text, attributes, state, defaultElevation)
+  def text(text: String): Button[R] = copy(text = text)
 
   override def elevation: ElevationProjection[R] = ButtonElevationProjection(this)
 
   override def build(toLaminarMod: (=> Shape[R]) => Attribute[R] => LaminarMod): LaminarElem =
     import com.raquo.laminar.api.*
 
-    def additionalAttributes = List(
+    def baseAttributes = List(
       Attribute.Style(() => L.boxShadow <-- currentElevation.map(shadow)),
+      Attribute.Style(() => L.opacity <-- state.signal.map(calculateOpacity)),
       Attribute.OnMouse(ZIO succeed state.update(_.press), ZIO succeed state.update(_.unPress)),
       Attribute.OnHover(ZIO succeed state.update(_.hover), ZIO succeed state.update(_.unHover)),
     )
 
-    def laminarMods = (attributes ++ additionalAttributes).map(toLaminarMod(this))
+    def laminarMods = (attributes.reverse ++ baseAttributes).map(toLaminarMod(this))
     L.button(text, laminarMods)
 
-  override def addAttribute[R1](attribute: Attribute[R1]): Button[R & R1] =
-    new Button(text, attribute :: attributes, state, defaultElevation)
-
-  def copy[R1 <: R](
-    text: String = text,
-    attributes: List[Attribute[R1]] = attributes,
-    state: Var[ButtonState] = state,
-    defaultElevation: Elevation = defaultElevation,
-  ) = new Button[R1](text, attributes, state, defaultElevation)
+  override def addAttribute[R1](attribute: Attribute[R1]): Button[R & R1] = copy(attributes = attribute :: attributes)
 
 private def calculateElevation(default: Elevation, state: ButtonState) = state match {
-  case ButtonState(_, true)     => Elevation.None
-  case ButtonState(true, false) => Elevation.fromOrdinal(default.ordinal + 1)
-  case _                        => default
+  case ButtonState(_, true) => Elevation.None
+  case ButtonState(true, false) =>
+    if default.ordinal == Elevation.values.length then default else Elevation.fromOrdinal(default.ordinal + 1)
+  case _ => default
 }
+
+private def calculateOpacity(state: ButtonState) = if state.isHovered then "90%" else "100%"
 
 object Button:
 
   def apply(): Button[Any] =
     new Button("")
-      .border.radius.small
-      .border.none
       .padding.horizontal.large
       .margin.small
       .height.large
-      .elevation.low
       .cursor.pointer
-      .background.color.primary
-      .color.onPrimary
       .asInstanceOf[Button[Any]]
-
-  def empty: Button[Any] = Button()
 
 private case class ButtonState(isHovered: Boolean = false, isPressed: Boolean = false):
   def hover   = copy(isHovered = true)
   def unHover = copy(isHovered = false)
   def press   = copy(isPressed = true)
   def unPress = copy(isPressed = false)
-
-//object ButtonState:
-//  def unapply(self: ButtonState) = self.isPressed -> self.isHovered
 
 class ButtonElevationProjection[-R](private val self: Button[R]) extends ElevationProjection[R](self):
 
@@ -84,9 +100,16 @@ class ButtonElevationProjection[-R](private val self: Button[R]) extends Elevati
   override def low     = self.copy(defaultElevation = Elevation.Low)
   override def medium  = self.copy(defaultElevation = Elevation.Medium)
   override def high    = self.copy(defaultElevation = Elevation.High)
-  override def highest = self.copy(defaultElevation = Elevation.Highest)
+  override def highest = self.copy(defaultElevation = Elevation.High)
 
   override def dynamic(elevation: Signal[Elevation]) =
 //    import com.raquo.laminar.api.*
 //    elevation --> self.defaultElevation
     self
+
+/**
+ * Shape .button .withState(ButtonState.init) .elevation.dynamic(state =>
+ * calculateElevation(baseElevation, state)) .onHover(state => state.hover,
+ * state => state.unHover) .onMouse(state => state.press, state =>
+ * state.unPress) .color.background.primary .color.foreground.onPrimary
+ */

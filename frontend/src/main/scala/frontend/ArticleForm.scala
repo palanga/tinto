@@ -19,7 +19,7 @@ object ArticleForm:
       Shape.input.text(title.signal).onInput_(title.set).placeholder("Radix"),
       Shape.input.text(subtitle.signal).onInput_(subtitle.set).placeholder("malbec"),
       Shape.input.text(price.signal).onInput_(price.set).placeholder("800"),
-      Shape.text("AGREGAR").onClick(addArticle().map(Catalog.addArticle).orDie),
+      Shape.button.contained.text("AGREGAR").onClick(addArticle().map(Catalog.addArticle).orDie),
     )
 
   private def addArticle() =

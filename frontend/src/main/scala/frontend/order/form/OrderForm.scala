@@ -13,22 +13,33 @@ object OrderForm:
   val currentStep = Var(Step.SelectArticles)
 
   enum Step:
+    def next = this match {
+      case Step.ReviewOrder => this
+      case _                => Step.fromOrdinal(this.ordinal + 1)
+    }
+    def prev = this match {
+      case Step.SelectArticles => this
+      case _                   => Step.fromOrdinal(this.ordinal - 1)
+    }
     case SelectArticles, CustomerInfo, ReviewOrder
 
   val prevStep =
     Shape
+      .button.textOnly
       .text("ATRAS")
-      .onClick_(currentStep.update(s => Step.fromOrdinal(s.ordinal - 1)))
+      .onClick_(currentStep.update(_.prev))
       .hideWhen(currentStep.signal.map(_ == Step.SelectArticles))
 
   val nextStep =
     Shape
+      .button.contained
       .text("SIGUIENTE")
-      .onClick_(currentStep.update(s => Step.fromOrdinal(s.ordinal + 1)))
+      .onClick_(currentStep.update(_.next))
       .hideWhen(currentStep.signal.map(_ == Step.ReviewOrder))
 
   val send =
     Shape
+      .button.contained
       .text("CONFIRMAR")
       .onClick(placeOrder())
       .showWhen(currentStep.signal.map(_ == Step.ReviewOrder))

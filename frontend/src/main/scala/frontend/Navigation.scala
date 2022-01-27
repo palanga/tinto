@@ -1,7 +1,7 @@
 package frontend
 
 import com.raquo.airstream.state.Var
-import mira.Shape
+import mira.{Button, Edge, Shape}
 
 object Navigation:
 
@@ -11,12 +11,24 @@ object Navigation:
   val currentPage = Var(Page.Catalog)
 
   val view =
-    Shape
-      .button
-      .text("CATALOGO")
-      .onClick_(currentPage.set(Page.Catalog))
-    ++
-    Shape
-      .button
-      .text("CARGAR ORDEN")
-      .onClick_(currentPage.set(Page.PlaceOrder))
+    Shape.list(
+      Shape
+        .button
+        .textOnly
+        .text("CATALOGO")
+        .onClick_(currentPage.set(Page.Catalog))
+//        .color.onPrimary
+      ,
+      Shape
+        .button
+        .contained
+        .text("CARGAR ORDEN")
+        .onClick_(currentPage.set(Page.PlaceOrder)),
+      Shape
+        .button
+        .outlined
+        .text("CARGAR ORDEN")
+        .onClick_(currentPage.set(Page.PlaceOrder)),
+//            .color.onPrimary
+    )
+//      .background.color.transparent

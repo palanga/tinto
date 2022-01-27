@@ -63,7 +63,7 @@ trait Shape[-R](attributes: List[Attribute[R]]):
 object Shape:
 
   val empty: Text[Any]                                        = Text("")
-  def button: Button[Any]                                     = Button.empty
+  def button: Buttons.type                                    = mira.Buttons
   val input: Input[Any]                                       = Input()
   def text(text: String): Text[Any]                           = Text.from(text)
   def text(text: AnyVal): Text[Any]                           = Text.from(text.toString)

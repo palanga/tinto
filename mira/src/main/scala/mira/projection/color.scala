@@ -11,3 +11,4 @@ class ColorProjection[-R](private val self: Shape[R], private val prefix: Lamina
   def onSecondary = self.addAttribute(Attribute.Style(() => prefix := "white"))
   def background  = self.addAttribute(Attribute.Style(() => prefix := "white"))
   def foreground  = self.addAttribute(Attribute.Style(() => prefix := "black"))
+  def transparent = self.addAttribute(Attribute.Style(() => prefix := "transparent"))

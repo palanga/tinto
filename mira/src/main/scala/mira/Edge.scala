@@ -25,7 +25,7 @@ class Edge[-R](
     import com.raquo.laminar.api.L
     import com.raquo.laminar.api.L.*
     def child                              = L.div(this.children.map(_.build(toLaminarMod)), attributes.map(toLaminarMod(this)))
-    def maybeChild(maybe: Signal[Boolean]) = L.div(L.child.maybe <-- maybe.map(Option.when(_)(child)))
+    def maybeChild(maybe: Signal[Boolean]) = L.span(L.child.maybe <-- maybe.map(Option.when(_)(child)))
     conditionalShow.fold(child)(maybeChild)
 
   override def addAttribute[R1](attribute: Attribute[R1]): Edge[R & R1] =
