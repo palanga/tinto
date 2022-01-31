@@ -17,18 +17,13 @@ object Navigation:
         .textOnly
         .text("CATALOGO")
         .onClick_(currentPage.set(Page.Catalog))
-//        .color.onPrimary
-      ,
+        .color.onPrimary,
       Shape
         .button
-        .contained
+        .textOnly
         .text("CARGAR ORDEN")
-        .onClick_(currentPage.set(Page.PlaceOrder)),
-      Shape
-        .button
-        .outlined
-        .text("CARGAR ORDEN")
-        .onClick_(currentPage.set(Page.PlaceOrder)),
-//            .color.onPrimary
+        .onClick_(currentPage.set(Page.PlaceOrder))
+        .color.onPrimary,
     )
-//      .background.color.transparent
+      .background.color.primary
+      .elevation.medium

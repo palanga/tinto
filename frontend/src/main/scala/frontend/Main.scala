@@ -24,8 +24,7 @@ object Main:
       placeOrderPage
         .showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.PlaceOrder))
         .margin.small
-        .padding.small
-        .elevation.low,
+        .padding.small,
     )
 
   def main(args: Array[String]): Unit =

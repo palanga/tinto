@@ -49,7 +49,7 @@ lazy val frontend = (project in file("frontend"))
       "dev.zio" %%% "zio-json" % "0.2.0-M3",
     ),
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.ESModule) },
-    scalaJSLinkerConfig ~= { _.withSourceMap(false) },
+    scalaJSLinkerConfig ~= { _.withSourceMap(true) },
     scalaJSUseMainModuleInitializer := true,
   )
   .dependsOn(core, web, mira, client_scalajs)

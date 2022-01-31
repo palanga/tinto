@@ -46,7 +46,11 @@ object OrderForm:
 
   val view =
     Shape.list(prevStep, nextStep, send)
-      ++ Shape.list(SelectArticles.view, CustomerInfo.view, ReviewOrder.view)
+      ++ Shape.list(
+        SelectArticles.view.showWhen(currentStep.signal.map(_ == Step.SelectArticles)),
+        CustomerInfo.view.showWhen(currentStep.signal.map(_ == Step.CustomerInfo)),
+        ReviewOrder.view.showWhen(currentStep.signal.map(_ == Step.ReviewOrder)),
+      )
 
   private def placeOrder() =
 //    for {
@@ -59,10 +63,7 @@ object OrderForm:
 
     val countById: Var[Map[UUID, Int]] = Var(Map.empty)
 
-    def view =
-      Shape
-        .list(Catalog.catalog.signal.map(_.map(renderArticle)))
-        .showWhen(currentStep.signal.map(_ == Step.SelectArticles))
+    val view = Shape.list(Catalog.catalog.signal.map(_.map(renderArticle)))
 
     private def renderArticle(id: UUID, article: Article) =
       article match {
@@ -83,7 +84,7 @@ object OrderForm:
       maybeInt.map(_ - 1).fold(None)(v => if v == 0 then None else Some(v))
 
   object CustomerInfo:
-    val view = Shape.text("en progreso").showWhen(currentStep.signal.map(_ == Step.CustomerInfo))
+    val view = Shape.text("en progreso")
 
   object ReviewOrder:
-    val view = Shape.text("en progreso").showWhen(currentStep.signal.map(_ == Step.ReviewOrder))
+    val view = Shape.text("en progreso")
