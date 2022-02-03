@@ -12,8 +12,8 @@ class Text[-R](text: String | Signal[String], attributes: List[Attribute[R]] = N
     import com.raquo.laminar.api.*
     val mods = attributes map toLaminarMod(this)
     this.text match {
-      case t: String         => L.p(t, mods)
-      case s: Signal[String] => L.p(L.child.text <-- s, mods)
+      case t: String         => L.div(t, mods)
+      case s: Signal[String] => L.div(L.child.text <-- s, mods)
     }
 
   override def addAttribute[R1](attribute: Attribute[R1]): Text[R & R1] = Text(text, attribute :: attributes)

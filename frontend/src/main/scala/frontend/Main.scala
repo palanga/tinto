@@ -14,7 +14,7 @@ object Main:
   val placeOrderPage = order.form.OrderForm.view
 
   val root =
-    Shape.list(
+    Shape.column(
       Navigation.view,
       addArticlePage
         .showWhen(Navigation.currentPage.signal.map(_ == Navigation.Page.Catalog))

@@ -10,8 +10,25 @@ import org.scalajs.dom
 import zio.{Runtime, UIO, ZIO}
 import mira.*
 
+import scala.annotation.targetName
 import scala.language.postfixOps
 
+/**
+ *   - ~columnas y filas~
+ *   - zio 2
+ *   - hacer servicios en el backend para inyectarlos en el frontend de prueba
+ *   - inject
+ *   - tema y color scheme
+ *   - withState
+ *   - sacarle la sombra a los botones que no van con sombra
+ *   - animaciones
+ *   - choice[A](Signal[A]) { A => Shape }
+ *   - interfaz comun en shape
+ *   - elevacion como atributo de primera ?
+ *   - creador de estilos y/o atributos reutilizable
+ *   - estilos como atributo de primera ?
+ *   - revisar la interfaz de color y fondo
+ */
 trait Shape[-R](attributes: List[Attribute[R]]):
 
   import com.raquo.laminar.api.L
@@ -68,9 +85,17 @@ object Shape:
   def text(text: String): Text[Any]                           = Text.from(text)
   def text(text: AnyVal): Text[Any]                           = Text.from(text.toString)
   def text(textSignal: => Signal[String | AnyVal]): Text[Any] = Text.fromSignal(textSignal)
-  def list[R](shape: Shape[R], shapes: Shape[R]*): Edge[R]    = Edge(shapes.prepended(shape))
-  def list[R](shapes: => Signal[Iterable[Shape[R]]]): Edge[R] =
-    Edge(Nil).addAttribute(Attribute.BindSignals(() => shapes))
+
+  def column[R](shapes: => Shape[R]*): Column[R] = Column(shapes)
+  def row[R](shapes: => Shape[R]*): Row[R]       = Row(shapes)
+
+  @targetName("columnFromSignal")
+  def column[R](shapes: => Signal[Iterable[Shape[R]]]): Column[R] =
+    Column(Nil).addAttribute(Attribute.BindSignals(() => shapes))
+
+  @targetName("rowFromSignal")
+  def row[R](shapes: => Signal[Iterable[Shape[R]]]): Row[R] =
+    Row(Nil).addAttribute(Attribute.BindSignals(() => shapes))
 
   def when(condition: => Signal[Boolean]): When = When(condition)
 
@@ -78,11 +103,6 @@ object Shape:
    * Alias for [[Shape.text]]
    */
   def fromTextSignal(textSignal: => Signal[String | AnyVal]): Text[Any] = Shape.text(textSignal)
-
-  /**
-   * Alias for [[Shape.list]]
-   */
-  def fromShapesSignal[R](shapesSignal: => Signal[Iterable[Shape[R]]]): Edge[R] = Shape.list(shapesSignal)
 
 private[mira] val none: Val[None.type]                                   = Val(None)
 private[mira] val always: Val[Boolean]                                   = Val(true)

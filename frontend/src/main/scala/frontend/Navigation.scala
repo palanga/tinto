@@ -11,7 +11,7 @@ object Navigation:
   val currentPage = Var(Page.Catalog)
 
   val view =
-    Shape.list(
+    Shape.row(
       Shape
         .button
         .textOnly

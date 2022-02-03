@@ -12,7 +12,7 @@ object Catalog:
 
   val catalog: Var[Map[UUID, Article]] = Var(Map.empty)
 
-  val view = Shape.fromShapesSignal(catalog.signal.map(_.values.map(renderArticle).toList))
+  val view = Shape.column(catalog.signal.map(_.values.map(renderArticle)))
 
   def addArticle(article: Ident[Article]): Unit = catalog.update(_ + (article.id -> article.self))
 
@@ -20,5 +20,9 @@ object Catalog:
 
   private def renderArticle(article: Article) = article match {
     case Article(title, subtitle, price) =>
-      Shape.text(title.self) +: (Shape.text(subtitle) ++ Shape.text(price.toString))
+      Shape.row(
+        Shape.text(title.self),
+        Shape.text(subtitle),
+        Shape.text(price.toString),
+      )
   }

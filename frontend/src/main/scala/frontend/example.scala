@@ -47,7 +47,7 @@ object example:
       .placeholder("El nombre de tu perri")
       .onKeyPress { case KeyCode.Enter => state.addPerriZIO }
       ++ Shape.text(state.error).showWhen(state.error.map(_.nonEmpty))
-      ++ Shape.list(state.names.map(_.map(Perri)))
+      ++ Shape.column(state.names.map(_.map(Perri)))
 
   private def Perri(name: String) =
     Shape.text("-").onClick_(state.removePerri(name)) ++ Shape.text(s"el perri se llama $name")

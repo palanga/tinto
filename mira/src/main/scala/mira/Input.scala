@@ -1,14 +1,16 @@
 package mira
 
+import com.raquo.airstream.state.Var
 import com.raquo.laminar.api.L.Signal
 import mira.Shape.*
 import zio.*
 
 import scala.annotation.targetName
 
-class Input[-R](text: String | Signal[String] = "", attributes: List[Attribute[R]] = Nil) extends Shape(attributes):
+class Input[-R](text: Signal[String] = Signal.fromValue(""), attributes: List[Attribute[R]] = Nil)
+    extends Shape(attributes):
 
-  def text(text: => String): Input[R] = new Input(text, this.attributes)
+//  def text(text: => String): Input[R] = new Input(text, this.attributes)
 
   @targetName("textSignal")
   def text(textSignal: => Signal[String]): Input[R] = new Input(textSignal, this.attributes)
@@ -23,6 +25,6 @@ class Input[-R](text: String | Signal[String] = "", attributes: List[Attribute[R
   override def build(toLaminarMod: (=> Shape[R]) => Attribute[R] => LaminarMod): LaminarElem =
     import com.raquo.laminar.api.*
     def laminarMods = attributes.map(toLaminarMod(this))
-    L.input(laminarMods)
+    L.input(L.value <-- text, laminarMods)
 
   override def addAttribute[R1](attribute: Attribute[R1]): Input[R & R1] = new Input(text, attribute :: attributes)

@@ -4,6 +4,7 @@ import com.raquo.airstream.state.Var
 import core.*
 import frontend.Catalog
 import mira.Shape
+import zio.URIO
 import zio.console.putStrLn
 
 import java.util.UUID
@@ -45,8 +46,8 @@ object OrderForm:
       .showWhen(currentStep.signal.map(_ == Step.ReviewOrder))
 
   val view =
-    Shape.list(prevStep, nextStep, send)
-      ++ Shape.list(
+    Shape.row(prevStep, nextStep, send)
+      ++ Shape.column( // TODO choice[A](Signal[A]) { A => Shape }
         SelectArticles.view.showWhen(currentStep.signal.map(_ == Step.SelectArticles)),
         CustomerInfo.view.showWhen(currentStep.signal.map(_ == Step.CustomerInfo)),
         ReviewOrder.view.showWhen(currentStep.signal.map(_ == Step.ReviewOrder)),
@@ -63,23 +64,33 @@ object OrderForm:
 
     val countById: Var[Map[UUID, Int]] = Var(Map.empty)
 
-    val view = Shape.list(Catalog.catalog.signal.map(_.map(renderArticle)))
+    val view = Shape.column(Catalog.catalog.signal.map(_.map(renderArticle)))
 
     private def renderArticle(id: UUID, article: Article) =
       article match {
         case Article(title, subtitle, price) =>
-          Shape.list(
-            Shape.text(title.self),
-            Shape.text(subtitle),
-            Shape.text(price.toString),
-            Shape.text("+").onClick_(countById.update(_.updatedWith(id)(incrementOrCreate))),
-            Shape.text(countById.signal.map(_.getOrElse(id, 0))),
-            Shape.text("-").onClick_(countById.update(_.updatedWith(id)(decrementOrRemove))),
+          Shape.row(
+            Shape.row(
+              Shape.text(title.self),
+              Shape.text(subtitle),
+              Shape.text(price.toString),
+            ),
+            Shape.column(
+              Shape.button.textOnly.text("+").onClick_(countById.update(_.updatedWith(id)(incrementOrCreate))),
+              Shape.input.text(countById.signal.map(_.getOrElse(id, 0).toString)).onInput(updateCount(id)),
+              Shape.button.textOnly.text("-").onClick_(countById.update(_.updatedWith(id)(decrementOrRemove))),
+            ),
           )
       }
 
+    def updateCount(id: UUID)(input: String): URIO[Any, Unit] =
+      zio.ZIO.succeed(input.toIntOption).someOrFailException
+        .map(number => countById.update(_.updated(id, number)))
+        .orDie // TODO errors
+
     def incrementOrCreate(maybeInt: Option[Int]): Option[Int] =
       maybeInt.map(_ + 1).fold(Some(1))(Some(_))
+
     def decrementOrRemove(maybeInt: Option[Int]): Option[Int] =
       maybeInt.map(_ - 1).fold(None)(v => if v == 0 then None else Some(v))
 
