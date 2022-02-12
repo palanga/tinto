@@ -28,13 +28,13 @@ object example:
 //      Counter.when(state.selectedTab.map(_ == Tab.Clicks)),
 //    )
 
-  import zio.duration.*
+  import zio.Duration.*
 
-  val a: Edge[zio.console.Console & zio.clock.Clock] = Shape.empty :: Navigation
+  val a: Edge[zio.Console & zio.Clock] = Shape.empty :: Navigation
 
-  val a1: Edge[zio.console.Console & zio.clock.Clock] = Shape.empty +: Navigation
+  val a1: Edge[zio.Console & zio.Clock] = Shape.empty +: Navigation
 
-  val b: Edge[zio.console.Console & zio.clock.Clock] = Navigation ++ Perris
+  val b: Edge[zio.Console & zio.Clock] = Navigation ++ Perris
 
   private def Navigation =
     Shape.text("perris").onClick_(state.showPerris) ++ Shape.text("clicks").onClick_(state.showClicks)

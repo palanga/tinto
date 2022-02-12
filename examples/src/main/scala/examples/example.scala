@@ -1,10 +1,11 @@
 package examples
 
 import endpoints.*
-import zhttp.http.CORSConfig
+//import zhttp.http.middleware.Cors.CorsConfig
 import zio.ZIO
-import zio.clock.Clock
-import zio.console.{Console, putStrLn}
+import zio.Clock
+import zio.Console
+import zio.Console.putStrLn
 import zio.json.{DeriveJsonCodec, JsonCodec}
 
 object examplev4 extends zio.App:
@@ -27,12 +28,12 @@ object examplev4 extends zio.App:
   ).sortBy(_.route.toString).map(_.docs).mkString("\n")
 
   object app:
-    import zio.duration.*
+    import zio.Duration.*
     import zhttp.service.Server
     import zhttp.http.Middleware.cors
 
     //    List[zhttp.http.HttpApp[zio.console.Console & zio.clock.Clock, Throwable]]
-    val httpApp: zhttp.http.HttpApp[zio.console.Console & zio.clock.Clock, Throwable] = List(
+    val httpApp: zhttp.http.HttpApp[zio.Console & zio.Clock, Throwable] = List(
       api.healthCheck.resolveWith(_ => putStrLn("ok")),
       api.healthCheckV2.resolveWith(_ => putStrLn("ok")),
 //      api.echo.resolveWith { case ((text, delay), _) => ZIO.unit.delay(delay.seconds) },
@@ -45,7 +46,7 @@ object examplev4 extends zio.App:
       case e                       => zhttp.http.HttpError.InternalServerError(e.getMessage, Some(e.getCause))
     }
     val port      = 8080
-    val appServer = Server.port(port) ++ Server.app(httpApp @@ cors(CORSConfig(true)))
+    val appServer = Server.port(port) ++ Server.app(httpApp /*@@ cors(CorsConfig(true))*/ )
 
   override def run(args: List[String]) =
     app.appServer.make

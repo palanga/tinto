@@ -21,14 +21,14 @@ enum Attribute[-R]:
 class StyleType(val toLaminarMod: () => LaminarMod)
 
 def toLaminarModDefault[R](shape: => Shape[R])(attribute: Attribute[R])(using runtime: Runtime[R]): LaminarMod =
-  def run = runtime.unsafeRunAsync_
+  def run = runtime.unsafeRunAsync
   attribute match {
     case Placeholder(text)   => if isInput(shape) then L.placeholder := text else L.emptyMod
     case BindSignal(signal)  => if isInput(shape) then L.value <-- signal() else L.child.text <-- signal()
     case BindSignals(signal) => L.children <-- signal().map(_.map(shape => shape.build(toLaminarModDefault)).toSeq)
-    case OnClick(zio)        => L.onClick --> { _ => runtime.unsafeRunAsync_(zio) }
-    case OnInput(f)          => L.onInput.mapToValue --> { runtime unsafeRunAsync_ f(_) }
-    case OnKeyPress(f)       => L.onKeyPress.map(_.keyCode) --> { runtime unsafeRunAsync_ f(_) }
+    case OnClick(zio)        => L.onClick --> { _ => run(zio) }
+    case OnInput(f)          => L.onInput.mapToValue --> { runtime unsafeRunAsync f(_) }
+    case OnKeyPress(f)       => L.onKeyPress.map(_.keyCode) --> { runtime unsafeRunAsync f(_) }
     case OnHover(in, out)    => List(onMouseOver --> { _ => run(in) }, onMouseOut --> { _ => run(out) })
     case OnMouse(down, up)   => List(L.onMouseDown --> { _ => run(down) }, L.onMouseUp --> { _ => run(up) })
     case Style(mod)          => mod()

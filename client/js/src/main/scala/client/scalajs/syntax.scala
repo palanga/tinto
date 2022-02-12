@@ -85,7 +85,7 @@ object client:
     )
 
   private def makeBackend: ZManaged[Any, Nothing, SttpBackend[Future, capabilities.WebSockets]] =
-    ZIO.succeed(FetchBackend()).toManaged(backend => ZIO.fromFuture(_ => backend.close()).ignore)
+    ZIO.succeed(FetchBackend()).toManagedWith(backend => ZIO.fromFuture(_ => backend.close()).ignore)
 
   private def convert(method: endpoints.Method) = method match {
     case endpoints.Method.GET    => sttp.model.Method.GET

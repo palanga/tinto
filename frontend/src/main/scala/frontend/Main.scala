@@ -29,7 +29,7 @@ object Main:
 
   def main(args: Array[String]): Unit =
     import com.raquo.laminar.api.L.*
-    runtime unsafeRunAsync_ Catalog.loadCatalog()
+    runtime unsafeRunAsync Catalog.loadCatalog()
     renderOnDomContentLoaded(
       org.scalajs.dom.document.querySelector("#app"),
       root.build(toLaminarModDefault),

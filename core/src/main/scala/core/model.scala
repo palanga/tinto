@@ -2,7 +2,7 @@ package core
 
 import aconcagua.price.mono.{Currency, Prices}
 import zio.*
-import zio.random.{Random, nextUUID}
+import zio.Random.nextUUID
 
 import java.util.UUID
 import scala.collection.immutable
@@ -53,56 +53,6 @@ object Order: // TODO NonEmpty L I S T
 
 enum Status:
   case Open, Paid, Delivered, Closed, Cancelled
-
-class StoreManager(store: Store, stock: StockManager):
-  def addArticle(form: AddArticleForm): ZIO[Random, Error, Ident[Article]] =
-    nextUUID
-      .flatMap(store.articles.insert(_, Article(form.title, form.subtitle, form.price)))
-      .flatMap(article => stock.init(article.id).as(article))
-
-  def updateArticlePrice(form: UpdateArticlePriceForm): ZIO[Any, Error, Ident[Article]] =
-    store.articles.update(form.id, old => old.copy(price = form.newPrice))
-
-  def removeArticle(id: UUID): ZIO[Any, Error, Ident[Article]] = store.articles.delete(id)
-
-  def listAllArticles: ZIO[Any, Error, List[Ident[Article]]] =
-    store.articles.all.runCollect.map(_.toList) // TODO return chunk or stream
-
-  def placeOrder(form: PlaceOrderForm): ZIO[Random, Error, Ident[Order]] =
-    nextUUID
-      .flatMap(store.orders.insert(_, Order(form.items, form.customer)))
-      .flatMap(order => stock.updateFor(order.self).as(order))
-
-  def markAsPaid(orderId: UUID): ZIO[Any, Error, Ident[Order]] =
-    store.orders
-      .updateEither(orderId, order => order.pay)
-      .flatMap(order => stock.updateFor(order.self).as(order))
-
-  def markAsDelivered(orderId: UUID): ZIO[Any, Error, Ident[Order]] =
-    store.orders
-      .updateEither(orderId, order => order.deliver)
-      .flatMap(order => stock.updateFor(order.self).as(order))
-
-  def markAsCancelled(orderId: UUID): ZIO[Any, Error, Ident[Order]] =
-    store.orders
-      .updateEither(orderId, order => order.cancel)
-      .flatMap(order => stock.updateFor(order.self).as(order))
-
-  def listAllOrders: ZIO[Any, Error, List[Ident[Order]]] = store.orders.all.runCollect.map(_.toList)
-
-  def stock(id: UUID): ZIO[Any, Error, Ident[Stock]] = stock.of(id)
-
-  def overwriteStock(form: OverwriteStockForm): ZIO[Any, Error, Ident[Stock]] = stock.init(form.id, form.amount)
-
-  def incrementStock(form: IncrementStockForm): ZIO[Any, Error, Ident[Stock]] = stock.increment(form.id, form.amount)
-
-object StoreManager:
-  val build: ZIO[Has[Database[Order]] with Has[Database[Article]] with Has[Database[Stock]], Nothing, StoreManager] =
-    for {
-      articles <- ZIO.environment[Has[Database[Article]]]
-      orders   <- ZIO.environment[Has[Database[Order]]]
-      stock    <- ZIO.environment[Has[Database[Stock]]]
-    } yield StoreManager(new Store(articles.get, orders.get), new StockManager(stock.get))
 
 class Store(val articles: Database[Article], val orders: Database[Order])
 

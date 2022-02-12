@@ -40,7 +40,7 @@ class InMemoryDatabase[T](val elements: TMap[UUID, T]) extends Database[T]:
     elements.get(id).commit.someOrFail(Error.NotFound(id)).map(Ident(id, _))
 
   override def all: ZStream[Any, Error, Ident[T]] =
-    ZStream.fromIterableM(elements.toChunk.commit).map(Ident.fromPair)
+    ZStream.fromIterableZIO(elements.toChunk.commit).map(Ident.fromPair)
 
   override def filter(filter: Filter[T]): ZStream[Any, Error, Ident[T]] =
     all.filter { case Ident(_, element) => filter.contains(element) }

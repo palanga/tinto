@@ -5,7 +5,7 @@ import core.*
 import frontend.Catalog
 import mira.Shape
 import zio.URIO
-import zio.console.putStrLn
+import zio.Console.putStrLn
 
 import java.util.UUID
 
