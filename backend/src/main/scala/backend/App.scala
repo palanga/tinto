@@ -23,7 +23,7 @@ object App extends zio.App:
   val docs    = fullApi.sortBy(_.endpoint.route.toString).map(_.endpoint.docs).mkString("\n")
 
   val port      = 8080
-  val appServer = Server.port(port) ++ Server.app(httpApp /*@@ cors(CorsConfig(true))*/ )
+  val appServer = Server.port(port) ++ Server.app(httpApp /*@@ cors(CorsConfig(true))*/ ) // TODO
 
 //  val testLayer =
 //    InMemoryDatabase.init[Article].toLayer

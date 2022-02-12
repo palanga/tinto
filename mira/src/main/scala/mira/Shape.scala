@@ -15,7 +15,7 @@ import scala.language.postfixOps
 
 /**
  *   - ~columnas y filas~
- *   - zio 2
+ *   - ~zio 2~
  *   - hacer servicios en el backend para inyectarlos en el frontend de prueba
  *   - inject
  *   - tema y color scheme
