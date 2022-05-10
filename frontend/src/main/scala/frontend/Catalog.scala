@@ -16,7 +16,7 @@ object Catalog:
 
   def addArticle(article: Ident[Article]): Unit = catalog.update(_ + (article.id -> article.self))
 
-  def loadCatalog() = fetch(web.api.catalog.all)(()).map(_.groupMapReduce(_.id)(_.self)((a, _) => a)).map(catalog.set)
+  def loadCatalog() = StoreManager(_.listAllArticles).map(_.groupMapReduce(_.id)(_.self)((a, _) => a)).map(catalog.set)
 
   private def renderArticle(article: Article) = article match {
     case Article(title, subtitle, price) =>
